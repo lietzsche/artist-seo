@@ -190,7 +190,9 @@ def test_seed_demo_is_idempotent_and_respects_visibility(client):
     assert any("건너뜀" in line for line in second)
     public = client.get("/api/v1/artworks?size=50").json()
     slugs = {item["slug"] for item in public["items"]}
-    assert {"demo-morning-light", "demo-no-media"} <= slugs
+    assert {"demo-morning-light", "demo-no-media", "demo-dawn-windows"} <= slugs
+    featured = {item["slug"] for item in client.get("/api/v1/artworks?featured=true").json()["items"]}
+    assert featured == {"demo-morning-light", "demo-layered-surface", "demo-night-window"}
     assert "demo-draft-study" not in slugs and "demo-trashed-work" not in slugs
     assert client.get("/api/v1/artworks/demo-draft-study").status_code == 404
     assert client.get("/api/v1/profile").json()["name"] == "데모 작가"
@@ -223,3 +225,17 @@ def test_sync_admin_from_env_values(client):
         sync_admin(db, "env@example.com", "short")
     with SessionLocal() as db, pytest.raises(SystemExit):
         sync_admin(db, "not-an-email", "long-enough-password")
+
+
+def test_media_delete_hides_media_and_admin_list_hides_trash(client):
+    from app.services.seed import seed_demo
+    response = client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"very-safe-password"})
+    csrf = response.json()["csrf_token"]
+    with SessionLocal() as db:
+        seed_demo(db)
+    admin_slugs = {item["slug"] for item in client.get("/api/v1/artworks/admin/all").json()}
+    assert "demo-draft-study" in admin_slugs and "demo-trashed-work" not in admin_slugs
+    media_id = client.get("/api/v1/artworks/demo-morning-light").json()["media"][0]["id"]
+    assert client.delete(f"/api/v1/media/{media_id}/admin").status_code == 403
+    assert client.delete(f"/api/v1/media/{media_id}/admin", headers={"X-CSRF-Token":csrf}).status_code == 204
+    assert client.get("/api/v1/artworks/demo-morning-light").json()["media"] == []

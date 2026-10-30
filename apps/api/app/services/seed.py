@@ -4,19 +4,15 @@
 여러 번 실행해도 중복 생성되지 않는다. 관리자 계정은 만들지 않는다(첫 설정 화면을 시험할 수 있도록).
 """
 import hashlib
-import shutil
-import subprocess
-import tempfile
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from io import BytesIO
-from pathlib import Path
-from PIL import Image, ImageDraw
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import ArtistProfile, Artwork, Exhibition, Inquiry, MediaAsset, MediaJob, Series
 from app.models.entities import SaleStatus
+from app.services.sample_art import light_video, paint
 from app.services.storage import LocalStorage
 
 PROFILE = {
@@ -34,21 +30,27 @@ SERIES = [
 ]
 
 # (slug, 제목, 시리즈 순번, 미디어, 추가 속성) — 각 항목이 시험하는 기능을 note에 적는다
+# 미디어: ("image", 크기, 그림 스타일) 또는 ("video", 크기, None). 그림은 app/services/sample_art.py가 코드로 그린다.
+# 각 항목이 시험하는 기능을 note에 적는다
 ARTWORKS = [
-    {"slug": "demo-morning-light", "title": "아침의 빛", "series": 0, "media": ("image", (2400, 1600), "#e9c46a"),
-     "note": "공개·선정·판매 중·가격 공개", "fields": {"year": 2025, "medium": "캔버스에 유채", "dimensions": "120 × 80 cm", "price_text": "3,000,000원", "show_price": True, "sale_status": SaleStatus.available, "is_published": True, "featured": True}},
-    {"slug": "demo-layered-surface", "title": "겹쳐진 표면", "series": 0, "media": ("image", (1200, 1800), "#8ab17d"),
-     "note": "공개·판매 중·가격 비공개(문의 유도)·세로 이미지", "fields": {"year": 2025, "medium": "종이에 아크릴", "dimensions": "60 × 90 cm", "price_text": "4,500,000원", "show_price": False, "sale_status": SaleStatus.available, "is_published": True, "featured": True}},
-    {"slug": "demo-night-window", "title": "밤의 창", "series": 1, "media": ("image", (1600, 1600), "#264653"),
-     "note": "공개·판매 완료", "fields": {"year": 2024, "medium": "캔버스에 유채", "dimensions": "100 × 100 cm", "sale_status": SaleStatus.sold, "is_published": True}},
+    {"slug": "demo-morning-light", "title": "아침의 빛", "series": 0, "media": ("image", (2400, 1600), "color_field"),
+     "note": "공개·대표 작품·판매 중·가격 공개", "fields": {"year": 2025, "medium": "캔버스에 유채", "dimensions": "120 × 80 cm", "price_text": "3,000,000원", "show_price": True, "sale_status": SaleStatus.available, "is_published": True, "featured": True}},
+    {"slug": "demo-layered-surface", "title": "겹쳐진 표면", "series": 0, "media": ("image", (1200, 1800), "stacked_fields"),
+     "note": "공개·대표 작품·판매 중·가격 비공개(문의 유도)·세로 이미지", "fields": {"year": 2025, "medium": "종이에 아크릴", "dimensions": "60 × 90 cm", "price_text": "4,500,000원", "show_price": False, "sale_status": SaleStatus.available, "is_published": True, "featured": True}},
+    {"slug": "demo-night-window", "title": "밤의 창", "series": 1, "media": ("image", (1600, 1600), "night_windows"),
+     "note": "공개·대표 작품·판매 완료", "fields": {"year": 2024, "medium": "캔버스에 유채", "dimensions": "100 × 100 cm", "sale_status": SaleStatus.sold, "is_published": True, "featured": True}},
     {"slug": "demo-moving-light", "title": "움직이는 빛", "series": 1, "media": ("video", (1280, 720), None),
-     "note": "공개·영상 작품(ffmpeg 없으면 이미지로 대체)", "fields": {"year": 2026, "medium": "단채널 영상, 4초", "sale_status": SaleStatus.unavailable, "is_published": True}},
+     "note": "공개·영상 작품(ffmpeg 없으면 이미지로 대체)", "fields": {"year": 2026, "medium": "단채널 영상, 8초, 사운드", "sale_status": SaleStatus.unavailable, "is_published": True}},
+    {"slug": "demo-afternoon-layers", "title": "오후의 층", "series": 0, "media": ("image", (1400, 2000), "stacked_fields"),
+     "note": "공개·판매 중·같은 스타일 다른 그림", "fields": {"year": 2026, "medium": "리넨에 아크릴", "dimensions": "70 × 100 cm", "price_text": "2,800,000원", "show_price": True, "sale_status": SaleStatus.available, "is_published": True}},
+    {"slug": "demo-dawn-windows", "title": "새벽의 창", "series": 1, "media": ("image", (2000, 1500), "night_windows"),
+     "note": "공개·문의 불가", "fields": {"year": 2026, "medium": "캔버스에 유채", "dimensions": "80 × 60 cm", "sale_status": SaleStatus.unavailable, "is_published": True}},
     {"slug": "demo-no-media", "title": "이미지 없는 작품", "series": None, "media": None,
      "note": "공개·미디어 없음(자리표시 박스)", "fields": {"year": 2026, "medium": "설치", "is_published": True}},
-    {"slug": "demo-draft-study", "title": "비공개 습작", "series": None, "media": ("image", (1600, 1200), "#e76f51"),
+    {"slug": "demo-draft-study", "title": "비공개 습작", "series": None, "media": ("image", (1600, 1200), "pencil_study"),
      "note": "비공개 — 공개 목록에 없고 주소로 들어가도 404", "fields": {"year": 2026, "medium": "종이에 연필", "is_published": False}},
     {"slug": "demo-trashed-work", "title": "휴지통 작품", "series": None, "media": None,
-     "note": "공개였지만 삭제됨 — 어디에도 보이지 않음", "fields": {"year": 2023, "is_published": True}, "trashed": True},
+     "note": "휴지통으로 옮긴 작품 — 공개 화면과 관리자 목록 어디에도 보이지 않음", "fields": {"year": 2023, "is_published": False}, "trashed": True},
 ]
 
 EXHIBITIONS = [
@@ -58,39 +60,11 @@ EXHIBITIONS = [
 ]
 
 
-def _image_bytes(size: tuple[int, int], color: str, label: str) -> bytes:
-    image = Image.new("RGB", size, color)
-    draw = ImageDraw.Draw(image)
-    w, h = size
-    for i in range(0, max(w, h), max(w, h) // 12):
-        draw.line([(i, 0), (0, i)], fill="#ffffff", width=max(2, w // 300))
-    draw.rectangle([w * 0.1, h * 0.1, w * 0.9, h * 0.9], outline="#ffffff", width=max(4, w // 200))
-    draw.text((w * 0.12, h * 0.12), label, fill="#ffffff")
-    buffer = BytesIO()
-    image.save(buffer, "PNG")
-    return buffer.getvalue()
-
-
-def _video_bytes(size: tuple[int, int]) -> bytes | None:
-    if not shutil.which("ffmpeg"):
-        return None
-    w, h = size
-    with tempfile.TemporaryDirectory() as temp_dir:
-        out = Path(temp_dir) / "demo.mp4"
-        subprocess.run(
-            ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"testsrc2=size={w}x{h}:rate=24:duration=4",
-             "-f", "lavfi", "-i", "sine=frequency=440:duration=4", "-shortest",
-             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(out)],
-            check=True, timeout=120,
-        )
-        return out.read_bytes()
-
-
 def _attach_media(db: Session, artwork: Artwork, spec: tuple) -> str:
-    kind, size, color = spec
-    data = _video_bytes(size) if kind == "video" else None
+    kind, size, style = spec
+    data = light_video(size) if kind == "video" else None
     if data is None:
-        kind, data = "image", _image_bytes(size, color or "#6d597a", artwork.title)
+        kind, data = "image", paint(style or "color_field", size, artwork.slug)
     suffix, content_type = (".mp4", "video/mp4") if kind == "video" else (".png", "image/png")
     key = f"{artwork.id}/{uuid.uuid4().hex}{suffix}"
     LocalStorage(settings.storage_root / "originals").put(key, BytesIO(data))

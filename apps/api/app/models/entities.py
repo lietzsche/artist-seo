@@ -123,7 +123,11 @@ class Artwork(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     series: Mapped[Series | None] = relationship()
-    media: Mapped[list["MediaAsset"]] = relationship(back_populates="artwork", order_by="MediaAsset.sort_order")
+    media: Mapped[list["MediaAsset"]] = relationship(
+        back_populates="artwork",
+        order_by="(MediaAsset.sort_order, MediaAsset.created_at)",
+        primaryjoin="and_(Artwork.id == MediaAsset.artwork_id, MediaAsset.deleted_at.is_(None))",
+    )
 
 
 class MediaAsset(Base):

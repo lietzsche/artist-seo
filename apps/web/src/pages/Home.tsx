@@ -1,23 +1,55 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api, Artwork, Exhibition, MEDIA_BASE, Profile } from "../lib/api";
+import { api, Artwork, coverOf, Exhibition, Profile } from "../lib/api";
+import { ArtworkCard } from "../components/ArtworkCard";
+
+const period = (e: Exhibition) => [e.start_date, e.end_date].filter(Boolean).join(" — ").replaceAll("-", ".") || "일정 미정";
 
 export function Home() {
-  const query = useQuery({ queryKey: ["featured"], queryFn: () => api<{items: Artwork[]}>("/artworks?size=4") });
-  const exhibitions = useQuery({ queryKey:["exhibitions"], queryFn:() => api<Exhibition[]>("/exhibitions") });
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
+  const featured = useQuery({ queryKey: ["featured"], queryFn: () => api<{ items: Artwork[] }>("/artworks?featured=true&size=6") });
+  const latest = useQuery({ queryKey: ["latest"], queryFn: () => api<{ items: Artwork[] }>("/artworks?size=6") });
+  const exhibitions = useQuery({ queryKey: ["exhibitions"], queryFn: () => api<Exhibition[]>("/exhibitions") });
+
+  // 대표 작품이 없으면 최신 작품을 대신 보여준다
+  const works = featured.data?.items.length ? featured.data.items : latest.data?.items ?? [];
+  const heroWork = works.find(w => coverOf(w));
+  const hero = heroWork ? coverOf(heroWork) : null;
+  const rest = works.filter(w => w !== heroWork);
   const current = exhibitions.data?.[0];
+  const p = profile.data;
+
   return <>
-    <section className="hero"><p className="eyebrow">CONTEMPORARY ARTIST</p><h1>{profile.data?.headline || profile.data?.name || "작품과 전시"}</h1>{profile.data?.intro && <p>{profile.data.intro}</p>}<Link className="button" to="/works">작품 보기</Link></section>
-    <section className="section"><div className="section-heading"><h2>선정 작품</h2><Link to="/works">전체 보기</Link></div>
-      {query.isPending && <p role="status">작품을 불러오는 중입니다.</p>}
-      {query.isError && <p role="alert">작품을 불러오지 못했습니다.</p>}
-      {query.data?.items.length === 0 && <p>아직 공개된 작품이 없습니다.</p>}
-      <div className="grid">{query.data?.items.map(work => <Link className="card" to={`/works/${work.slug}`} key={work.id}>
-        {work.media[0]?.public_key ? <img src={`${MEDIA_BASE}/${work.media[0].public_key}`} alt={work.title} width={work.media[0].width || 1200} height={work.media[0].height || 900} loading="lazy"/> : <div className="placeholder" aria-hidden="true"/>}
-        <h3>{work.title}</h3><p>{work.year} · {work.medium}</p></Link>)}</div>
+    <section className={`container home-hero${hero ? "" : " text-only"}`}>
+      <div className="hero-copy">
+        {p?.location && <p className="eyebrow">{p.location}</p>}
+        <h1 className="display">{p?.headline || p?.name || "작품과 전시"}</h1>
+        {p?.intro && <p className="lead">{p.intro}</p>}
+        <div><Link className="link-arrow" to="/works">작품 보기 <span aria-hidden="true">→</span></Link></div>
+      </div>
+      {heroWork && hero && (
+        <figure className="hero-figure fade-in">
+          <Link to={`/works/${heroWork.slug}`}><img src={hero.src} alt={heroWork.title} width={hero.width} height={hero.height} /></Link>
+          <figcaption><cite>{heroWork.title}</cite>{heroWork.year ? `, ${heroWork.year}` : ""}</figcaption>
+        </figure>
+      )}
     </section>
-    {current ? <section className="exhibition"><p className="eyebrow">CURRENT / RECENT EXHIBITION</p><h2>{current.title}</h2><p>{current.start_date || "일정 미정"}{current.end_date && ` — ${current.end_date}`} · {current.venue}{current.location && `, ${current.location}`}</p><p>{current.description}</p></section> : <section className="exhibition"><p className="eyebrow">EXHIBITION</p><h2>예정된 전시가 없습니다.</h2><p>새 전시 소식은 이곳에 업데이트됩니다.</p></section>}
+
+    {rest.length > 0 && (
+      <section className="container section">
+        <div className="section-head"><h2>{featured.data?.items.length ? "선정 작품" : "최근 작품"}</h2><Link className="link-arrow" to="/works">전체 보기 <span aria-hidden="true">→</span></Link></div>
+        <div className="works-grid">{rest.map(work => <ArtworkCard key={work.id} work={work} />)}</div>
+      </section>
+    )}
+    {featured.isSuccess && latest.isSuccess && works.length === 0 && <p className="container state">아직 공개된 작품이 없습니다.</p>}
+
+    {current && (
+      <section className="exhibition-band">
+        <div className="container">
+          <div className="meta"><p className="eyebrow">Exhibition</p><p>{period(current)}</p><p className="muted">{[current.venue, current.location].filter(Boolean).join(", ")}</p></div>
+          <div><h2 className="title-lg">{current.title}</h2>{current.description && <p className="desc">{current.description}</p>}</div>
+        </div>
+      </section>
+    )}
   </>;
 }
-

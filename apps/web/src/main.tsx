@@ -9,6 +9,7 @@ import { WorkDetail } from "./pages/WorkDetail";
 import { About } from "./pages/About";
 import { Contact } from "./pages/Contact";
 import { Admin } from "./pages/Admin";
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./styles.css";
 
 const router = createBrowserRouter([{

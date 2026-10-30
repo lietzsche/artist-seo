@@ -199,6 +199,16 @@ def cancel_upload(upload_id: str, session=Depends(require_csrf), db: Session = D
         db.commit()
 
 
+@router.delete("/{media_id}/admin", status_code=204)
+def delete_media(media_id: str, _: object = Depends(require_csrf), db: Session = Depends(get_db)) -> None:
+    """미디어를 작품에서 뺀다. 원본 파일은 남겨 두고(휴지통) 공개 화면에서만 사라진다."""
+    media = db.get(MediaAsset, media_id)
+    if not media or media.deleted_at:
+        raise HTTPException(status_code=404, detail="미디어를 찾을 수 없습니다")
+    media.deleted_at = datetime.now(UTC)
+    db.commit()
+
+
 @router.get("/{media_id}/original")
 def download_original(media_id: str, range_header: str | None = Header(default=None, alias="Range"), _: Admin = Depends(require_admin), db: Session = Depends(get_db)) -> StreamingResponse:
     media = db.get(MediaAsset, media_id)

@@ -18,6 +18,7 @@ def public_list(
     medium: str | None = None,
     sale_status: str | None = None,
     series_id: str | None = None,
+    featured: bool | None = None,
     db: Session = Depends(get_db),
 ) -> dict:
     filters = [Artwork.is_published.is_(True), Artwork.deleted_at.is_(None)]
@@ -29,6 +30,8 @@ def public_list(
         filters.append(Artwork.sale_status == sale_status)
     if series_id:
         filters.append(Artwork.series_id == series_id)
+    if featured is not None:
+        filters.append(Artwork.featured.is_(featured))
     total = db.scalar(select(func.count()).select_from(Artwork).where(*filters)) or 0
     items = db.scalars(
         select(Artwork).options(selectinload(Artwork.media)).where(*filters).order_by(Artwork.created_at.desc()).offset((page - 1) * size).limit(size)
@@ -46,7 +49,7 @@ def public_detail(slug: str, db: Session = Depends(get_db)) -> Artwork:
 
 @router.get("/admin/all", dependencies=[Depends(require_admin)])
 def admin_list(db: Session = Depends(get_db)) -> list[ArtworkOut]:
-    items = db.scalars(select(Artwork).options(selectinload(Artwork.media)).order_by(Artwork.updated_at.desc())).all()
+    items = db.scalars(select(Artwork).options(selectinload(Artwork.media)).where(Artwork.deleted_at.is_(None)).order_by(Artwork.created_at.desc())).all()
     return [ArtworkOut.model_validate(x) for x in items]
 
 
