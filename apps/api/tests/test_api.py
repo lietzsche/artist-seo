@@ -1,6 +1,11 @@
 from app.core.database import SessionLocal
 from app.core.security import hash_password
+from io import BytesIO
+import hashlib
+from PIL import Image
 from app.models import Admin, Artwork
+from app.models import MediaAsset, MediaJob
+from app.worker import claim_job, execute_job
 
 
 def create_admin():
@@ -43,3 +48,49 @@ def test_inquiry_requires_consent_and_rate_limits(client):
     body["consent"] = True
     assert client.post("/api/v1/inquiries", json=body).status_code == 201
     assert client.post("/api/v1/inquiries", json=body).status_code == 429
+
+
+def test_chunk_resume_complete_and_original_range(client):
+    create_admin()
+    csrf = login(client)
+    with SessionLocal.begin() as db:
+        artwork = Artwork(slug="upload-work", title="업로드 작품", is_published=False)
+        db.add(artwork)
+        db.flush()
+        artwork_id = artwork.id
+    image = Image.new("RGB", (16, 12), (120, 80, 40))
+    source = BytesIO()
+    image.save(source, format="JPEG")
+    content = source.getvalue()
+    headers = {"X-CSRF-Token": csrf}
+    initiated = client.post("/api/v1/media/uploads", headers=headers, json={"artwork_id":artwork_id, "filename":"원본 사진.jpg", "content_type":"image/jpeg", "total_bytes":len(content)})
+    assert initiated.status_code == 201
+    upload_id = initiated.json()["id"]
+    split = len(content) // 2
+    first = client.patch(f"/api/v1/media/uploads/{upload_id}", headers={**headers, "Upload-Offset":"0", "Content-Type":"application/offset+octet-stream"}, content=content[:split])
+    assert first.status_code == 204
+    assert first.headers["upload-offset"] == str(split)
+    assert client.head(f"/api/v1/media/uploads/{upload_id}").headers["upload-offset"] == str(split)
+    wrong = client.patch(f"/api/v1/media/uploads/{upload_id}", headers={**headers, "Upload-Offset":"0"}, content=content[split:])
+    assert wrong.status_code == 409
+    second = client.patch(f"/api/v1/media/uploads/{upload_id}", headers={**headers, "Upload-Offset":str(split)}, content=content[split:])
+    assert second.status_code == 204
+    completed = client.post(f"/api/v1/media/uploads/{upload_id}/complete", headers=headers)
+    assert completed.status_code == 200
+    result = completed.json()
+    assert result["sha256"] == hashlib.sha256(content).hexdigest()
+    claimed = claim_job("test-worker")
+    assert claimed == result["job_id"]
+    execute_job(claimed)
+    with SessionLocal() as db:
+        media = db.get(MediaAsset, result["media_id"])
+        job = db.get(MediaJob, claimed)
+        assert media and media.status.value == "ready" and media.public_key
+        assert job and job.status == "completed" and job.progress == 100
+    client.cookies.clear()
+    assert client.get(f"/api/v1/media/{result['media_id']}/original").status_code == 401
+    login(client)
+    ranged = client.get(f"/api/v1/media/{result['media_id']}/original", headers={"Range":"bytes=2-11"})
+    assert ranged.status_code == 206
+    assert ranged.content == content[2:12]
+    assert ranged.headers["cache-control"] == "private, no-store"

@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_artist.db"
@@ -14,10 +15,12 @@ from app.models import Base
 
 @pytest.fixture(autouse=True)
 def database():
+    shutil.rmtree("test_storage", ignore_errors=True)
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     yield
     Base.metadata.drop_all(engine)
+    shutil.rmtree("test_storage", ignore_errors=True)
 
 
 @pytest.fixture

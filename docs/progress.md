@@ -12,15 +12,20 @@
 - 스트리밍 `Storage` 계약, 안전한 LocalStorage, S3 호환 구현
 - React 공개 홈/작품/상세/소개/문의와 관리자 로그인·기본 등록 화면
 - 동일 출처 Nginx, 공개 파생본과 비공개 원본 볼륨 분리
+- 예약 용량을 계산하는 재개 가능 순차 청크 업로드, 위치 조회·취소·재시도 UI
+- 확장자/MIME 대신 Pillow·ffprobe로 실제 형식 확인, 원본 SHA-256 기록
+- 관리자 전용 원본 다운로드, 단일 HTTP Range와 private/no-store 응답
+- 이미지 EXIF 방향 반영, ICC→sRGB 변환, 메타데이터를 제거한 JPEG/WebP 파생본
+- 800/1600/2400px 설정과 원본보다 확대하지 않는 멱등 이미지 worker 처리
 
 ## 구현 중 / 미완료
 
 - 공개 예제 seed
-- 작은 업로드와 청크 재개 업로드, 예약 용량·형식 검증·취소·재시도
-- Pillow 색상 관리·반응형 파생본, FFmpeg 영상/포스터/HDR 판별
+- 업로드 만료 정리와 병렬 요청 스트레스 검증, 관리자 용량 현황
+- FFmpeg 영상 재생본·포스터/HDR 판별
 - worker heartbeat·실제 처리·멱등 완료·중단 자식 프로세스 정리
 - 관리자 미디어/시리즈/전시/문의/사용량 UI와 키보드 정렬
-- 원본 Range 다운로드와 공개 미디어의 세밀한 응답 헤더
+- 다중 Range와 공개 미디어의 세밀한 응답 헤더
 - 보존기간 정리, 참조 보호, Local→R2 검증 이전 CLI
 - 동적 sitemap와 작품별 초기 HTML 메타데이터 사전 렌더링
 - PostgreSQL 동시성 통합 테스트, Playwright 전체 흐름, 재시작/복구 시험
@@ -32,7 +37,7 @@
 
 2026-10-30 기준:
 
-- `pytest`: 6개 통과 (인증/CSRF, 비공개 차단, 작품 생성, 문의 동의·속도 제한, 저장소 스트리밍·경로 순회)
+- `pytest`: 8개 통과 (인증/CSRF, 비공개 차단, 작품 생성, 문의 제한, 저장소, 청크 재개·SHA-256·원본 Range, 이미지 파생본)
 - `npm run build`: TypeScript와 Vite 프로덕션 빌드 통과
 - `npm audit --audit-level=moderate`: 취약점 0건
 - `docker compose config --quiet`: 통과

@@ -61,3 +61,26 @@ class InquiryOut(BaseModel):
     message: str
     status: str
     created_at: datetime
+
+
+class UploadInit(BaseModel):
+    artwork_id: str
+    filename: str = Field(min_length=1, max_length=500)
+    content_type: str = Field(min_length=1, max_length=100)
+    total_bytes: int = Field(gt=0)
+
+
+class UploadOut(BaseModel):
+    id: str
+    status: str
+    expected_bytes: int
+    received_bytes: int
+    expires_at: datetime
+
+
+class UploadCompleteOut(BaseModel):
+    media_id: str
+    job_id: str
+    sha256: str
+    content_type: str
+    byte_size: int

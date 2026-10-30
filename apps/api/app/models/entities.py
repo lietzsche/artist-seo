@@ -30,6 +30,13 @@ class MediaStatus(str, enum.Enum):
     failed = "failed"
 
 
+class UploadStatus(str, enum.Enum):
+    active = "active"
+    completed = "completed"
+    cancelled = "cancelled"
+    failed = "failed"
+
+
 class Admin(Base):
     __tablename__ = "admins"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
@@ -116,6 +123,22 @@ class MediaJob(Base):
     error: Mapped[str | None] = mapped_column(Text)
     lease_owner: Mapped[str | None] = mapped_column(String(100))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class UploadSession(Base):
+    __tablename__ = "upload_sessions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
+    admin_id: Mapped[str] = mapped_column(ForeignKey("admins.id", ondelete="CASCADE"), index=True)
+    artwork_id: Mapped[str] = mapped_column(ForeignKey("artworks.id", ondelete="CASCADE"), index=True)
+    original_filename: Mapped[str] = mapped_column(String(500))
+    declared_content_type: Mapped[str] = mapped_column(String(100))
+    expected_bytes: Mapped[int] = mapped_column(BigInteger)
+    received_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    temporary_key: Mapped[str] = mapped_column(String(500), unique=True)
+    status: Mapped[UploadStatus] = mapped_column(Enum(UploadStatus), default=UploadStatus.active, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 

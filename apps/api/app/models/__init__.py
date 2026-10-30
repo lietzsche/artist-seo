@@ -7,7 +7,8 @@ from app.models.entities import (
     MediaAsset,
     MediaJob,
     Series,
+    UploadSession,
 )
 
-__all__ = ["Base", "Admin", "AdminSession", "Series", "Artwork", "MediaAsset", "MediaJob", "Inquiry"]
+__all__ = ["Base", "Admin", "AdminSession", "Series", "Artwork", "MediaAsset", "MediaJob", "UploadSession", "Inquiry"]
 
