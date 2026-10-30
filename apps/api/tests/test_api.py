@@ -127,3 +127,25 @@ def test_admin_overview_and_failed_job_retry(client):
     assert client.post(f"/api/v1/admin/jobs/{job_id}/retry", headers={"X-CSRF-Token":csrf}).json() == {"status":"queued"}
     with SessionLocal() as db:
         assert db.get(MediaJob, job_id).attempts == 0
+
+
+def test_series_filter_and_exhibition_management(client):
+    create_admin()
+    csrf = login(client)
+    headers = {"X-CSRF-Token":csrf}
+    series_response = client.post("/api/v1/series/admin", headers=headers, json={"name":"빛의 표면", "description":"가상 시리즈", "sort_order":1})
+    assert series_response.status_code == 201
+    series_id = series_response.json()["id"]
+    work = {"slug":"series-work", "title":"시리즈 작품", "year":2026, "medium":"종이에 안료", "dimensions":"40 × 30 cm", "description":"", "price_text":None, "show_price":False, "sale_status":"available", "is_published":True, "featured":False, "series_id":series_id}
+    assert client.post("/api/v1/artworks/admin", headers=headers, json=work).status_code == 201
+    assert client.get(f"/api/v1/artworks?series_id={series_id}").json()["total"] == 1
+    assert client.get("/api/v1/artworks?series_id=missing").json()["total"] == 0
+    invalid = {"slug":"bad-dates", "title":"잘못된 날짜", "venue":"", "location":"", "start_date":"2026-12-31", "end_date":"2026-01-01", "description":"", "is_published":True, "sort_order":0}
+    assert client.post("/api/v1/exhibitions/admin", headers=headers, json=invalid).status_code == 422
+    exhibition = {**invalid, "slug":"light-stay", "title":"빛의 체류", "start_date":"2026-11-01", "end_date":"2026-12-20", "venue":"프로젝트 스페이스"}
+    created = client.post("/api/v1/exhibitions/admin", headers=headers, json=exhibition)
+    assert created.status_code == 201
+    assert client.get("/api/v1/exhibitions").json()[0]["slug"] == "light-stay"
+    assert client.get("/api/v1/exhibitions/light-stay").status_code == 200
+    assert client.get("/api/v1/exhibitions/admin/all").status_code == 200
+    assert client.delete(f"/api/v1/series/admin/{series_id}", headers=headers).status_code == 409

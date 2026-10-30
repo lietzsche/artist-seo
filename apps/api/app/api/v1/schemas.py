@@ -1,5 +1,5 @@
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from datetime import date, datetime
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from app.models.entities import SaleStatus
 
 
@@ -87,3 +87,39 @@ class UploadCompleteOut(BaseModel):
     sha256: str
     content_type: str
     byte_size: int
+
+
+class SeriesIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=5000)
+    sort_order: int = Field(default=0, ge=0, le=100000)
+
+
+class SeriesOut(SeriesIn):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+
+
+class ExhibitionIn(BaseModel):
+    slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=200)
+    title: str = Field(min_length=1, max_length=300)
+    venue: str = Field(default="", max_length=300)
+    location: str = Field(default="", max_length=300)
+    start_date: date | None = None
+    end_date: date | None = None
+    description: str = Field(default="", max_length=10000)
+    is_published: bool = False
+    sort_order: int = Field(default=0, ge=0, le=100000)
+
+    @model_validator(mode="after")
+    def valid_dates(self) -> "ExhibitionIn":
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("종료일은 시작일보다 빠를 수 없습니다")
+        return self
+
+
+class ExhibitionOut(ExhibitionIn):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    created_at: datetime
+    updated_at: datetime

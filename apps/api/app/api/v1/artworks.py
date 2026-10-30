@@ -17,6 +17,7 @@ def public_list(
     year: int | None = None,
     medium: str | None = None,
     sale_status: str | None = None,
+    series_id: str | None = None,
     db: Session = Depends(get_db),
 ) -> dict:
     filters = [Artwork.is_published.is_(True), Artwork.deleted_at.is_(None)]
@@ -26,6 +27,8 @@ def public_list(
         filters.append(Artwork.medium.ilike(f"%{medium}%"))
     if sale_status:
         filters.append(Artwork.sale_status == sale_status)
+    if series_id:
+        filters.append(Artwork.series_id == series_id)
     total = db.scalar(select(func.count()).select_from(Artwork).where(*filters)) or 0
     items = db.scalars(
         select(Artwork).options(selectinload(Artwork.media)).where(*filters).order_by(Artwork.created_at.desc()).offset((page - 1) * size).limit(size)

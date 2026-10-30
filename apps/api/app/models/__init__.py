@@ -3,6 +3,7 @@ from app.models.entities import (
     AdminSession,
     Artwork,
     Base,
+    Exhibition,
     Inquiry,
     LoginAttempt,
     MediaAsset,
@@ -11,5 +12,5 @@ from app.models.entities import (
     UploadSession,
 )
 
-__all__ = ["Base", "Admin", "AdminSession", "LoginAttempt", "Series", "Artwork", "MediaAsset", "MediaJob", "UploadSession", "Inquiry"]
+__all__ = ["Base", "Admin", "AdminSession", "LoginAttempt", "Series", "Exhibition", "Artwork", "MediaAsset", "MediaJob", "UploadSession", "Inquiry"]
 

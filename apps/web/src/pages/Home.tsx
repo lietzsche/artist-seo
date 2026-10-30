@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api, Artwork, MEDIA_BASE } from "../lib/api";
+import { api, Artwork, Exhibition, MEDIA_BASE } from "../lib/api";
 
 export function Home() {
   const query = useQuery({ queryKey: ["featured"], queryFn: () => api<{items: Artwork[]}>("/artworks?size=4") });
+  const exhibitions = useQuery({ queryKey:["exhibitions"], queryFn:() => api<Exhibition[]>("/exhibitions") });
+  const current = exhibitions.data?.[0];
   return <>
     <section className="hero"><p className="eyebrow">CONTEMPORARY ARTIST</p><h1>사라지는 빛과<br/>남겨진 표면</h1><p>서윤은 일상의 표면에 머무는 빛과 시간의 감각을 회화와 영상으로 기록합니다.</p><Link className="button" to="/works">작품 보기</Link></section>
     <section className="section"><div className="section-heading"><h2>선정 작품</h2><Link to="/works">전체 보기</Link></div>
@@ -14,7 +16,7 @@ export function Home() {
         {work.media[0]?.public_key ? <img src={`${MEDIA_BASE}/${work.media[0].public_key}`} alt={work.title} width={work.media[0].width || 1200} height={work.media[0].height || 900} loading="lazy"/> : <div className="placeholder" aria-hidden="true"/>}
         <h3>{work.title}</h3><p>{work.year} · {work.medium}</p></Link>)}</div>
     </section>
-    <section className="exhibition"><p className="eyebrow">CURRENT EXHIBITION</p><h2>가상의 전시 — 빛의 체류</h2><p>2026. 11. 2 — 12. 20 · 프로젝트 스페이스</p></section>
+    {current ? <section className="exhibition"><p className="eyebrow">CURRENT / RECENT EXHIBITION</p><h2>{current.title}</h2><p>{current.start_date || "일정 미정"}{current.end_date && ` — ${current.end_date}`} · {current.venue}{current.location && `, ${current.location}`}</p><p>{current.description}</p></section> : <section className="exhibition"><p className="eyebrow">EXHIBITION</p><h2>예정된 전시가 없습니다.</h2><p>새 전시 소식은 이곳에 업데이트됩니다.</p></section>}
   </>;
 }
 
