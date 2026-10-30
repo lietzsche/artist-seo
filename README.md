@@ -48,6 +48,12 @@ docker compose up -d
 
 접속 주소는 `http://localhost:8080`, API 문서는 `/api/v1/docs`입니다. DB 포트는 호스트에 공개하지 않습니다. Cloudflare Tunnel은 `docker compose --profile tunnel up -d`로 선택 실행하며 토큰은 `.env`에만 둡니다.
 
+관리자 비밀번호를 바꾸면 기존 세션도 모두 취소됩니다.
+
+```bash
+docker compose run --rm api python -m app.cli reset-password admin@example.com
+```
+
 ## 저장 제한 기본값
 
 - 파일당 5 GiB, 총 100 GiB

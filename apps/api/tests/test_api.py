@@ -42,6 +42,14 @@ def test_admin_auth_csrf_and_create(client):
     assert client.get("/api/v1/artworks/first-work").status_code == 200
 
 
+def test_login_attempt_limit(client):
+    create_admin()
+    body = {"email":"admin@example.com", "password":"definitely-wrong"}
+    for _ in range(5):
+        assert client.post("/api/v1/auth/login", json=body).status_code == 401
+    assert client.post("/api/v1/auth/login", json=body).status_code == 429
+
+
 def test_inquiry_requires_consent_and_rate_limits(client):
     body = {"name":"구매자", "email":"buyer@example.com", "message":"작품 구매 가능 여부를 문의합니다.", "consent":False, "website":""}
     assert client.post("/api/v1/inquiries", json=body).status_code == 422
@@ -94,3 +102,28 @@ def test_chunk_resume_complete_and_original_range(client):
     assert ranged.status_code == 206
     assert ranged.content == content[2:12]
     assert ranged.headers["cache-control"] == "private, no-store"
+
+
+def test_admin_overview_and_failed_job_retry(client):
+    create_admin()
+    with SessionLocal.begin() as db:
+        artwork = Artwork(slug="failed-work", title="실패 작업")
+        db.add(artwork)
+        db.flush()
+        media = MediaAsset(artwork_id=artwork.id, original_key="missing.mp4", original_filename="missing.mp4", media_type="video", content_type="video/mp4", byte_size=1234, sha256="0"*64, status="failed")
+        db.add(media)
+        db.flush()
+        job = MediaJob(media_id=media.id, kind="process_video", status="failed", attempts=3, error="테스트 실패")
+        db.add(job)
+        db.flush()
+        job_id = job.id
+    assert client.get("/api/v1/admin/overview").status_code == 401
+    csrf = login(client)
+    overview = client.get("/api/v1/admin/overview")
+    assert overview.status_code == 200
+    assert overview.json()["storage"]["stored_bytes"] == 1234
+    assert overview.json()["failed_jobs"][0]["id"] == job_id
+    assert client.post(f"/api/v1/admin/jobs/{job_id}/retry").status_code == 403
+    assert client.post(f"/api/v1/admin/jobs/{job_id}/retry", headers={"X-CSRF-Token":csrf}).json() == {"status":"queued"}
+    with SessionLocal() as db:
+        assert db.get(MediaJob, job_id).attempts == 0

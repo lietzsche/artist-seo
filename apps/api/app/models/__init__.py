@@ -4,11 +4,12 @@ from app.models.entities import (
     Artwork,
     Base,
     Inquiry,
+    LoginAttempt,
     MediaAsset,
     MediaJob,
     Series,
     UploadSession,
 )
 
-__all__ = ["Base", "Admin", "AdminSession", "Series", "Artwork", "MediaAsset", "MediaJob", "UploadSession", "Inquiry"]
+__all__ = ["Base", "Admin", "AdminSession", "LoginAttempt", "Series", "Artwork", "MediaAsset", "MediaJob", "UploadSession", "Inquiry"]
 

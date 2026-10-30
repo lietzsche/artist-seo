@@ -58,6 +58,15 @@ class AdminSession(Base):
     admin: Mapped[Admin] = relationship()
 
 
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 class Series(Base):
     __tablename__ = "series"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)

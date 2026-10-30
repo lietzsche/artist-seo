@@ -1,5 +1,6 @@
 import secrets
-from datetime import UTC, datetime
+import hashlib
+from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,17 +8,44 @@ from app.api.deps import SESSION_COOKIE, current_session, require_csrf
 from app.api.v1.schemas import LoginIn
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import expires_in, new_session_token, verify_password
-from app.models import Admin, AdminSession
+from app.core.security import expires_in, hash_password, new_session_token, verify_password
+from app.models import Admin, AdminSession, LoginAttempt
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
+
+
+def _aware(value: datetime | None) -> datetime | None:
+    return value if not value or value.tzinfo else value.replace(tzinfo=UTC)
+
+
+def _attempt_key(request: Request, email: str) -> str:
+    client_ip = request.client.host if request.client else "unknown"
+    return hashlib.sha256(f"{settings.app_secret_key}:{client_ip}:{email.lower()}".encode()).hexdigest()
 
 
 @router.post("/login")
 def login(payload: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)) -> dict[str, str]:
+    now = datetime.now(UTC)
+    key = _attempt_key(request, payload.email)
+    attempt = db.get(LoginAttempt, key)
+    if attempt and _aware(attempt.locked_until) and _aware(attempt.locked_until) > now:
+        raise HTTPException(status_code=429, detail="로그인 시도가 너무 많습니다. 잠시 후 다시 시도하세요")
     admin = db.scalar(select(Admin).where(Admin.email == payload.email.lower()))
-    if not admin or not admin.is_active or not verify_password(admin.password_hash, payload.password):
+    password_valid = verify_password(admin.password_hash if admin else DUMMY_PASSWORD_HASH, payload.password)
+    if not admin or not admin.is_active or not password_valid:
+        window = timedelta(minutes=settings.login_window_minutes)
+        if not attempt or (_aware(attempt.window_started_at) or now) + window <= now:
+            attempt = LoginAttempt(key_hash=key, attempts=1, window_started_at=now)
+            db.merge(attempt)
+        else:
+            attempt.attempts += 1
+        if attempt.attempts >= settings.login_max_attempts:
+            attempt.locked_until = now + window
+        db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="이메일 또는 비밀번호가 올바르지 않습니다")
+    if attempt:
+        db.delete(attempt)
     token, token_hash = new_session_token()
     csrf = secrets.token_hex(32)
     db.add(AdminSession(admin_id=admin.id, token_hash=token_hash, csrf_token=csrf, expires_at=expires_in(24)))

@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     trash_retention_days: int = 30
     session_cookie_secure: bool = False
     media_worker_concurrency: int = Field(default=1, ge=1, le=2)
+    login_max_attempts: int = Field(default=5, ge=3, le=20)
+    login_window_minutes: int = Field(default=15, ge=1, le=1440)
 
     @model_validator(mode="after")
     def secure_production(self) -> "Settings":

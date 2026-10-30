@@ -1,9 +1,10 @@
 import argparse
 import getpass
-from sqlalchemy import select
+from datetime import UTC, datetime
+from sqlalchemy import select, update
 from app.core.database import SessionLocal
 from app.core.security import hash_password
-from app.models import Admin
+from app.models import Admin, AdminSession
 
 
 def main() -> None:
@@ -27,6 +28,7 @@ def main() -> None:
             if not admin:
                 raise SystemExit("관리자를 찾을 수 없습니다")
             admin.password_hash = hash_password(password)
+            db.execute(update(AdminSession).where(AdminSession.admin_id == admin.id, AdminSession.revoked_at.is_(None)).values(revoked_at=datetime.now(UTC)))
         db.commit()
     print("관리자 정보가 저장되었습니다")
 
