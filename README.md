@@ -1,6 +1,6 @@
 # 현대미술 작가 포트폴리오
 
-한 명의 작가를 위한 포트폴리오·온라인 전시·판매 문의 서비스입니다. 현재는 첫 완성본을 향해 구현 중이며, 공개 페이지와 서버 세션 인증, 작품/문의 CRUD의 기반이 연결되어 있습니다. 실존 작가나 작품을 사용하지 않고 교체 가능한 가상 작가 `서윤`을 사용합니다.
+한 명의 작가를 위한 포트폴리오·온라인 전시·판매 문의 서비스입니다. 현재는 첫 완성본을 향해 구현 중이며, 공개 페이지, 서버 세션 인증과 첫 관리자 설정, 작품·문의·시리즈·전시 관리, 재개 가능한 미디어 업로드와 이미지·영상 변환이 연결되어 있습니다. 실존 작가나 작품을 사용하지 않고 교체 가능한 가상 작가 `서윤`을 사용합니다.
 
 ## 현재 구조
 
@@ -19,8 +19,8 @@
 
 ## 필요 도구
 
-- Node.js 22 이상, Docker와 Docker Compose
-- 로컬 개발 시 Python 3.12 추가
+- Docker와 Docker Compose
+- 로컬 개발 시 Node.js 22 이상과 Python 3.12 추가
 
 현재 사용자에게 Docker 권한이 없으면 `permission denied ... docker.sock` 오류가 납니다. 이때는 아래 명령 후 다시 로그인합니다.
 
@@ -43,7 +43,7 @@ openssl rand -hex 32   # 출력값을 APP_SECRET_KEY에 넣기
 - `POSTGRES_PASSWORD`: DB 비밀번호
 - `DATABASE_URL`: 안의 비밀번호(`change-me` 부분)를 `POSTGRES_PASSWORD`와 같은 값으로 변경. 다르면 API가 DB에 접속하지 못합니다.
 
-운영에서는 `APP_ENV=production`, `SESSION_COOKIE_SECURE=true`, 실제 HTTPS origin(`PUBLIC_ORIGIN`)을 설정해야 합니다. production에서는 32자 미만이거나 기본값인 시크릿 키로는 시작되지 않습니다.
+운영에서는 `APP_ENV=production`, `SESSION_COOKIE_SECURE=true`, 실제 HTTPS origin(`PUBLIC_ORIGIN`)을 설정해야 합니다. production에서는 시크릿 키가 32자 미만이거나 `development`로 시작하면 시작되지 않습니다. `.env.example`의 예시 값(`replace-with-...`)은 이 검사에 걸리지 않으므로 반드시 직접 바꿔야 합니다.
 
 ### 2. 실행
 
@@ -51,7 +51,7 @@ openssl rand -hex 32   # 출력값을 APP_SECRET_KEY에 넣기
 docker compose up -d
 ```
 
-처음 실행하면 이미지 빌드(프론트 빌드 포함)와 DB 마이그레이션이 자동으로 진행되어 1~2분 걸립니다. Node나 Python을 호스트에 설치할 필요는 없습니다.
+처음 실행하면 이미지 빌드(프론트 빌드 포함)가 진행되어 몇 분 걸릴 수 있습니다. DB 마이그레이션은 API 컨테이너가 시작할 때마다 자동으로 적용됩니다. Node나 Python을 호스트에 설치할 필요는 없습니다.
 
 접속 주소는 `http://localhost:8080`입니다. 관리자 계정이 아직 없으면 어느 페이지로 들어가도 **관리자 계정 설정** 화면(`/admin`)이 나오고, 여기서 이메일과 비밀번호(10자 이상)를 정하면 바로 로그인됩니다. 이 화면은 첫 관리자를 만들 때 한 번만 쓸 수 있으므로, 외부에 공개(Cloudflare Tunnel 등)하기 전에 먼저 계정을 만들어 두세요. API 문서는 `/api/v1/docs`입니다.
 
@@ -61,7 +61,7 @@ docker compose up -d
 
 종료는 `docker compose down`, 로그 확인은 `docker compose logs -f api`입니다. Cloudflare Tunnel은 `docker compose --profile tunnel up -d`로 선택 실행하며 토큰은 `.env`에만 둡니다.
 
-명령줄로 관리자를 추가할 수도 있습니다.
+명령줄로 관리자를 추가할 수도 있습니다. `run`은 마이그레이션을 실행하지 않으므로 `docker compose up -d`로 한 번 띄운 뒤에 사용합니다. `create-admin`은 비밀번호를 입력받습니다.
 
 ```bash
 docker compose run --rm api python -m app.cli create-admin admin@example.com
@@ -94,17 +94,16 @@ export PUBLIC_ORIGIN=http://localhost:5173
 .venv/bin/uvicorn app.main:app --reload
 ```
 
-다른 터미널에서 `cd apps/web && npm ci && npm run dev`를 실행하고 `http://localhost:5173`에 접속합니다. Vite가 `/api` 요청을 `localhost:8000`으로 전달합니다. 미디어 변환 worker는 같은 환경 변수를 지정한 터미널에서 `.venv/bin/python -m app.worker`로 실행합니다.
+다른 터미널에서 `cd apps/web && npm ci && npm run dev`를 실행하고 `http://localhost:5173`에 접속합니다. Vite가 `/api` 요청을 `localhost:8000`으로 전달합니다. 미디어 변환 worker는 같은 환경 변수를 지정한 터미널에서 `.venv/bin/python -m app.worker`로 실행합니다. 로컬 개발에서는 업로드 파일이 `apps/api/storage`에 저장되지만, Vite는 `/media` 요청을 `localhost:8080`(Docker gateway)으로 보내므로 변환된 이미지·영상이 화면에 보이지 않습니다. 미디어 표시는 Docker Compose 실행으로 확인합니다.
 
 ## 저장 제한 기본값
 
 - 파일당 5 GiB, 총 100 GiB
 - 디스크 최소 잔여 공간 5 GiB
 - 임시 업로드 만료 24시간
-- 휴지통 보존 30일
 - 미디어 변환 동시 실행 1개
 
-서버 용량에 맞게 `.env`에서 변경합니다. 관리자는 작품을 만든 뒤 사진·영상을 재개 가능한 청크 방식으로 올릴 수 있습니다. 이미지는 반응형 JPEG/WebP, 영상은 포스터와 1080p 이하 MP4로 변환됩니다. HDR은 SDR 변환 후 BT.709 태그를 검증하며 검증 실패 시 성공 처리하지 않습니다. 구체적인 상태는 [진행표](docs/progress.md)를 확인하세요.
+서버 용량에 맞게 `.env`에서 변경합니다. 관리자는 작품을 만든 뒤 사진·영상을 재개 가능한 청크 방식으로 올릴 수 있습니다. 이미지는 너비 800/1600/2400px의 JPEG/WebP, 영상은 포스터 이미지와 가로 1920px 이하 H.264 MP4로 변환됩니다. 작품을 삭제하면 휴지통으로 옮겨지기만 하고, `TRASH_RETENTION_DAYS` 설정은 있지만 기간이 지난 항목을 자동으로 지우는 기능은 아직 없습니다. HDR은 SDR 변환 후 BT.709 태그를 검증하며 검증 실패 시 성공 처리하지 않습니다. 구체적인 상태는 [진행표](docs/progress.md)를 확인하세요.
 
 ## 테스트
 
