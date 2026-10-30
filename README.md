@@ -17,25 +17,35 @@
 - `infra/nginx`: 동일 출처 gateway와 공개 미디어 설정
 - `docs`: 운영·이전·진행 문서
 
-## 로컬 개발
+## 필요 도구
 
-필요 도구는 Node.js 22 이상, Python 3.12, Docker Compose입니다.
+- Node.js 22 이상, Docker와 Docker Compose
+- 로컬 개발 시 Python 3.12 추가
+
+현재 사용자에게 Docker 권한이 없으면 `permission denied ... docker.sock` 오류가 납니다. 이때는 아래 명령 후 다시 로그인합니다.
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+## Docker Compose로 실행 (권장)
+
+### 1. 환경 설정
 
 ```bash
 cp .env.example .env
-cd apps/api
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.lock
-.venv/bin/alembic upgrade head
-.venv/bin/python -m app.cli create-admin admin@example.test
-.venv/bin/uvicorn app.main:app --reload
+openssl rand -hex 32   # 출력값을 APP_SECRET_KEY에 넣기
 ```
 
-다른 터미널에서 `cd apps/web && npm ci && npm run dev`를 실행합니다.
+`.env`에서 아래 값을 바꿉니다.
 
-## Docker Compose
+- `APP_SECRET_KEY`: 위에서 만든 64자 난수. `openssl`이 없으면 `python3 -c "import secrets; print(secrets.token_hex(32))"`
+- `POSTGRES_PASSWORD`: DB 비밀번호
+- `DATABASE_URL`: 안의 비밀번호(`change-me` 부분)를 `POSTGRES_PASSWORD`와 같은 값으로 변경. 다르면 API가 DB에 접속하지 못합니다.
 
-`.env.example`을 `.env`로 복사한 뒤 비밀번호와 `APP_SECRET_KEY`를 바꿉니다. 운영에서는 `APP_ENV=production`, `SESSION_COOKIE_SECURE=true`, 실제 HTTPS origin을 설정해야 합니다.
+운영에서는 `APP_ENV=production`, `SESSION_COOKIE_SECURE=true`, 실제 HTTPS origin(`PUBLIC_ORIGIN`)을 설정해야 합니다. production에서는 32자 미만이거나 기본값인 시크릿 키로는 시작되지 않습니다.
+
+### 2. 빌드와 실행
 
 ```bash
 npm --prefix apps/web ci
@@ -46,13 +56,38 @@ docker compose run --rm api python -m app.cli create-admin admin@example.com
 docker compose up -d
 ```
 
-접속 주소는 `http://localhost:8080`, API 문서는 `/api/v1/docs`입니다. DB 포트는 호스트에 공개하지 않습니다. Cloudflare Tunnel은 `docker compose --profile tunnel up -d`로 선택 실행하며 토큰은 `.env`에만 둡니다.
+`create-admin`은 관리자 비밀번호를 입력받습니다. 접속 주소는 `http://localhost:8080`, API 문서는 `/api/v1/docs`, 관리자 화면은 `/admin`입니다. 아직 예제 데이터가 없어 처음에는 작품 목록이 비어 있으니 관리자로 로그인해 작품을 등록합니다. 프론트 코드를 바꾸면 `npm --prefix apps/web run build`를 다시 실행해야 반영됩니다.
+
+종료는 `docker compose down`, 로그 확인은 `docker compose logs -f api`입니다. DB 포트는 호스트에 공개하지 않습니다. Cloudflare Tunnel은 `docker compose --profile tunnel up -d`로 선택 실행하며 토큰은 `.env`에만 둡니다.
 
 관리자 비밀번호를 바꾸면 기존 세션도 모두 취소됩니다.
 
 ```bash
 docker compose run --rm api python -m app.cli reset-password admin@example.com
 ```
+
+## 로컬 개발
+
+API와 프론트를 직접 띄워 코드 변경을 바로 확인하는 방식입니다. 마이그레이션이 SQLite를 지원하지 않으므로 PostgreSQL이 필요하며, 개발용 DB만 Docker로 띄웁니다. 영상 변환을 시험하려면 `ffmpeg`(`ffprobe` 포함)도 설치해야 합니다.
+
+API는 실행한 폴더(`apps/api`)의 `.env`만 읽고 루트 `.env`는 읽지 않습니다. 그래서 아래처럼 환경 변수로 지정합니다. `PUBLIC_ORIGIN`을 Vite 주소로 맞추지 않으면 로그인 후 등록·수정 요청이 Origin 검사에 막힙니다.
+
+```bash
+docker run -d --name artist-dev-db -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_DB=artist -e POSTGRES_USER=artist -e POSTGRES_PASSWORD=dev \
+  postgres:17.6-alpine
+
+cd apps/api
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.lock
+export DATABASE_URL=postgresql+psycopg://artist:dev@localhost:5432/artist
+export PUBLIC_ORIGIN=http://localhost:5173
+.venv/bin/alembic upgrade head
+.venv/bin/python -m app.cli create-admin admin@example.test
+.venv/bin/uvicorn app.main:app --reload
+```
+
+다른 터미널에서 `cd apps/web && npm ci && npm run dev`를 실행하고 `http://localhost:5173`에 접속합니다. Vite가 `/api` 요청을 `localhost:8000`으로 전달합니다. 미디어 변환 worker는 같은 환경 변수를 지정한 터미널에서 `.venv/bin/python -m app.worker`로 실행합니다.
 
 ## 저장 제한 기본값
 
