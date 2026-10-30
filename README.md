@@ -38,7 +38,7 @@ docker compose up -d
 
 처음 실행하면 이미지 빌드(프론트 빌드 포함)가 진행되어 몇 분 걸릴 수 있습니다. DB 마이그레이션은 API 컨테이너가 시작할 때마다 자동으로 적용됩니다. Node나 Python을 호스트에 설치할 필요는 없습니다.
 
-접속 주소는 `http://localhost:8080`입니다. 관리자 계정이 아직 없으면 어느 페이지로 들어가도 **관리자 계정 설정** 화면(`/admin`)이 나오고, 여기서 작가 이름, 관리자 이메일과 비밀번호(10자 이상)를 정하면 바로 로그인됩니다. 이 화면은 첫 관리자를 만들 때 한 번만 쓸 수 있으므로, 외부에 공개(Cloudflare Tunnel 등)하기 전에 먼저 계정을 만들어 두세요. API 문서는 `/api/v1/docs`입니다.
+접속 주소는 `http://localhost:8080`입니다. 관리자 계정이 아직 없으면 어느 페이지로 들어가도 **관리자 계정 설정** 화면(`/admin`)이 나오고(`.env`로 관리자를 정했다면 나오지 않음, 아래 4번 참고), 여기서 작가 이름, 관리자 이메일과 비밀번호(10자 이상)를 정하면 바로 로그인됩니다. 이 화면은 첫 관리자를 만들 때 한 번만 쓸 수 있으므로, 외부에 공개(Cloudflare Tunnel 등)하기 전에 먼저 계정을 만들어 두세요. API 문서는 `/api/v1/docs`입니다.
 
 코드를 바꾼 뒤에는 `docker compose up -d --build`로 이미지를 다시 빌드해야 반영됩니다. 종료는 `docker compose down`, 로그 확인은 `docker compose logs -f api`입니다. `docker compose down -v`는 DB와 업로드 파일 볼륨까지 지우므로 처음 상태로 돌아갑니다.
 
@@ -93,19 +93,21 @@ docker compose exec api python -m app.cli seed-demo
 
 화면에서 따라 해 볼 수 있는 시나리오는 [docs/test-scenarios.html](docs/test-scenarios.html)을 브라우저로 열어 확인합니다.
 
-### 4. 관리자 계정 명령
+### 4. 관리자 계정을 `.env`로 설정
 
-명령줄로 관리자를 추가할 수도 있습니다. `run`은 마이그레이션을 실행하지 않으므로 `docker compose up -d`로 한 번 띄운 뒤에 사용합니다. `create-admin`은 비밀번호를 입력받습니다.
+웹 화면 대신 `.env`로 관리자 계정을 정할 수 있습니다.
 
-```bash
-docker compose run --rm api python -m app.cli create-admin admin@example.com
+```dotenv
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=10자-이상의-비밀번호
 ```
 
-관리자 비밀번호를 바꾸면 기존 세션도 모두 취소됩니다.
-
-```bash
-docker compose run --rm api python -m app.cli reset-password admin@example.com
-```
+- API가 시작할 때마다 이 값을 반영합니다. 계정이 없으면 만들고, 비밀번호가 다르면 새 비밀번호로 바꾸면서 기존 로그인 세션을 모두 취소합니다.
+- 값을 바꾼 뒤에는 `docker compose up -d`로 API를 다시 시작하면 반영됩니다. 비밀번호를 잊었을 때도 이 방법으로 재설정합니다.
+- 계정이 생기므로 첫 관리자 설정 화면은 나오지 않습니다. 이미 웹 화면에서 만든 관리자가 있으면 그 계정은 그대로 두고 `.env` 계정이 추가됩니다.
+- 둘 중 하나만 넣거나, 이메일 형식이 틀리거나, 비밀번호가 10자 미만이면 API가 시작되지 않습니다. 원인은 `docker compose logs api`에서 확인합니다.
+- 비밀번호에 `$`가 들어가면 Docker Compose가 변수로 해석하므로 `ADMIN_PASSWORD='pa$$word...'`처럼 작은따옴표로 감쌉니다.
+- 비밀번호가 평문으로 남으므로 `.env`를 저장소에 올리지 마세요(`.gitignore`에 포함되어 있음).
 
 ## 로컬 개발
 
@@ -124,11 +126,10 @@ python3 -m venv .venv
 export DATABASE_URL=postgresql+psycopg://artist:dev@localhost:5432/artist
 export PUBLIC_ORIGIN=http://localhost:5173
 .venv/bin/alembic upgrade head
-.venv/bin/python -m app.cli create-admin admin@example.test
 .venv/bin/uvicorn app.main:app --reload
 ```
 
-다른 터미널에서 `cd apps/web && npm ci && npm run dev`를 실행하고 `http://localhost:5173`에 접속합니다. Vite가 `/api` 요청을 `localhost:8000`으로 전달합니다. 미디어 변환 worker는 같은 환경 변수를 지정한 터미널에서 `.venv/bin/python -m app.worker`로 실행합니다. 로컬 개발에서는 업로드 파일이 `apps/api/storage`에 저장되지만, Vite는 `/media` 요청을 `localhost:8080`(Docker gateway)으로 보내므로 변환된 이미지·영상이 화면에 보이지 않습니다. 미디어 표시는 Docker Compose 실행으로 확인합니다.
+다른 터미널에서 `cd apps/web && npm ci && npm run dev`를 실행하고 `http://localhost:5173`에 접속하면 관리자 설정 화면이 나옵니다. Vite가 `/api` 요청을 `localhost:8000`으로 전달합니다. 미디어 변환 worker는 같은 환경 변수를 지정한 터미널에서 `.venv/bin/python -m app.worker`로 실행합니다. 로컬 개발에서는 업로드 파일이 `apps/api/storage`에 저장되지만, Vite는 `/media` 요청을 `localhost:8080`(Docker gateway)으로 보내므로 변환된 이미지·영상이 화면에 보이지 않습니다. 미디어 표시는 Docker Compose 실행으로 확인합니다.
 
 ## 저장 제한 기본값
 

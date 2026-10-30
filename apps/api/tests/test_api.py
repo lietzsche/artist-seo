@@ -204,3 +204,22 @@ def test_seed_demo_is_idempotent_and_respects_visibility(client):
     with SessionLocal() as db:
         media = db.scalar(select(MediaAsset).join(Artwork).where(Artwork.slug == "demo-morning-light"))
         assert media.status.value == "ready" and media.public_key
+
+
+def test_sync_admin_from_env_values(client):
+    import pytest
+    from app.cli import sync_admin
+    with SessionLocal() as db:
+        assert "생성" in sync_admin(db, "Env@Example.com", "env-password-123")
+    assert client.get("/api/v1/auth/setup").json() == {"needs_setup": False}
+    old = client.post("/api/v1/auth/login", json={"email":"env@example.com", "password":"env-password-123"})
+    assert old.status_code == 200
+    with SessionLocal() as db:
+        assert "변경 없음" in sync_admin(db, "env@example.com", "env-password-123")
+        assert "갱신" in sync_admin(db, "env@example.com", "new-password-456")
+    assert client.get("/api/v1/auth/me").status_code == 401
+    assert client.post("/api/v1/auth/login", json={"email":"env@example.com", "password":"new-password-456"}).status_code == 200
+    with SessionLocal() as db, pytest.raises(SystemExit):
+        sync_admin(db, "env@example.com", "short")
+    with SessionLocal() as db, pytest.raises(SystemExit):
+        sync_admin(db, "not-an-email", "long-enough-password")

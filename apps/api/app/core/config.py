@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     login_max_attempts: int = Field(default=5, ge=3, le=20)
     login_window_minutes: int = Field(default=15, ge=1, le=1440)
     seed_demo_data: bool = False
+    admin_email: str = ""
+    admin_password: str = ""
 
     @model_validator(mode="after")
     def secure_production(self) -> "Settings":
