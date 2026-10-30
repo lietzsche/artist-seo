@@ -1,6 +1,12 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../lib/api";
 
 export function Layout() {
+  const location = useLocation();
+  // 관리자 계정이 아직 없으면 어느 페이지로 들어와도 첫 설정 화면으로 보낸다
+  const setup = useQuery({ queryKey: ["setup"], queryFn: () => api<{ needs_setup: boolean }>("/auth/setup"), staleTime: Infinity });
+  if (setup.data?.needs_setup && location.pathname !== "/admin") return <Navigate to="/admin" replace />;
   return <>
     <a className="skip" href="#content">본문으로 건너뛰기</a>
     <header className="site-header">

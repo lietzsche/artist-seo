@@ -149,3 +149,21 @@ def test_series_filter_and_exhibition_management(client):
     assert client.get("/api/v1/exhibitions/light-stay").status_code == 200
     assert client.get("/api/v1/exhibitions/admin/all").status_code == 200
     assert client.delete(f"/api/v1/series/admin/{series_id}", headers=headers).status_code == 409
+
+
+def test_first_admin_setup(client):
+    assert client.get("/api/v1/auth/setup").json() == {"needs_setup": True}
+    assert client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"short"}).status_code == 422
+    response = client.post("/api/v1/auth/setup", json={"email":"Owner@Example.com", "password":"very-safe-password"})
+    assert response.status_code == 201
+    assert response.json()["email"] == "owner@example.com"
+    assert client.get("/api/v1/auth/me").json()["email"] == "owner@example.com"
+    assert client.get("/api/v1/auth/setup").json() == {"needs_setup": False}
+    again = client.post("/api/v1/auth/setup", json={"email":"intruder@example.com", "password":"very-safe-password"})
+    assert again.status_code == 409
+
+
+def test_setup_rejects_foreign_origin(client):
+    body = {"email":"owner@example.com", "password":"very-safe-password"}
+    assert client.post("/api/v1/auth/setup", json=body, headers={"Origin":"https://evil.example"}).status_code == 403
+    assert client.get("/api/v1/auth/setup").json() == {"needs_setup": True}

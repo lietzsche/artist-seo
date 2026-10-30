@@ -45,20 +45,27 @@ openssl rand -hex 32   # 출력값을 APP_SECRET_KEY에 넣기
 
 운영에서는 `APP_ENV=production`, `SESSION_COOKIE_SECURE=true`, 실제 HTTPS origin(`PUBLIC_ORIGIN`)을 설정해야 합니다. production에서는 32자 미만이거나 기본값인 시크릿 키로는 시작되지 않습니다.
 
-### 2. 빌드와 실행
+### 2. 실행
 
 ```bash
-npm --prefix apps/web ci
-npm --prefix apps/web run build
-docker compose build
-docker compose run --rm api alembic upgrade head
-docker compose run --rm api python -m app.cli create-admin admin@example.com
 docker compose up -d
 ```
 
-`create-admin`은 관리자 비밀번호를 입력받습니다. 접속 주소는 `http://localhost:8080`, API 문서는 `/api/v1/docs`, 관리자 화면은 `/admin`입니다. 아직 예제 데이터가 없어 처음에는 작품 목록이 비어 있으니 관리자로 로그인해 작품을 등록합니다. 프론트 코드를 바꾸면 `npm --prefix apps/web run build`를 다시 실행해야 반영됩니다.
+처음 실행하면 이미지 빌드(프론트 빌드 포함)와 DB 마이그레이션이 자동으로 진행되어 1~2분 걸립니다. Node나 Python을 호스트에 설치할 필요는 없습니다.
 
-종료는 `docker compose down`, 로그 확인은 `docker compose logs -f api`입니다. DB 포트는 호스트에 공개하지 않습니다. Cloudflare Tunnel은 `docker compose --profile tunnel up -d`로 선택 실행하며 토큰은 `.env`에만 둡니다.
+접속 주소는 `http://localhost:8080`입니다. 관리자 계정이 아직 없으면 어느 페이지로 들어가도 **관리자 계정 설정** 화면(`/admin`)이 나오고, 여기서 이메일과 비밀번호(10자 이상)를 정하면 바로 로그인됩니다. 이 화면은 첫 관리자를 만들 때 한 번만 쓸 수 있으므로, 외부에 공개(Cloudflare Tunnel 등)하기 전에 먼저 계정을 만들어 두세요. API 문서는 `/api/v1/docs`입니다.
+
+코드를 바꾼 뒤에는 `docker compose up -d --build`로 이미지를 다시 빌드해야 반영됩니다.
+
+포트는 `8080`(nginx 게이트웨이) 하나만 호스트에 열립니다. API(`8000`)와 DB(`5432`)는 컨테이너끼리만 통신하며, `/api` 요청은 nginx가 API로 전달합니다.
+
+종료는 `docker compose down`, 로그 확인은 `docker compose logs -f api`입니다. Cloudflare Tunnel은 `docker compose --profile tunnel up -d`로 선택 실행하며 토큰은 `.env`에만 둡니다.
+
+명령줄로 관리자를 추가할 수도 있습니다.
+
+```bash
+docker compose run --rm api python -m app.cli create-admin admin@example.com
+```
 
 관리자 비밀번호를 바꾸면 기존 세션도 모두 취소됩니다.
 

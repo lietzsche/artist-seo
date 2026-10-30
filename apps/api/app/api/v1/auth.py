@@ -2,7 +2,7 @@ import secrets
 import hashlib
 from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 from app.api.deps import SESSION_COOKIE, current_session, require_csrf
 from app.api.v1.schemas import LoginIn
@@ -46,6 +46,10 @@ def login(payload: LoginIn, request: Request, response: Response, db: Session = 
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="이메일 또는 비밀번호가 올바르지 않습니다")
     if attempt:
         db.delete(attempt)
+    return _start_session(admin, response, db)
+
+
+def _start_session(admin: Admin, response: Response, db: Session) -> dict[str, str]:
     token, token_hash = new_session_token()
     csrf = secrets.token_hex(32)
     db.add(AdminSession(admin_id=admin.id, token_hash=token_hash, csrf_token=csrf, expires_at=expires_in(24)))
@@ -60,6 +64,32 @@ def login(payload: LoginIn, request: Request, response: Response, db: Session = 
         path="/",
     )
     return {"csrf_token": csrf, "email": admin.email}
+
+
+def _has_admin(db: Session) -> bool:
+    return bool(db.scalar(select(func.count()).select_from(Admin)))
+
+
+@router.get("/setup")
+def setup_status(db: Session = Depends(get_db)) -> dict[str, bool]:
+    return {"needs_setup": not _has_admin(db)}
+
+
+@router.post("/setup", status_code=status.HTTP_201_CREATED)
+def setup(payload: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)) -> dict[str, str]:
+    """관리자가 하나도 없을 때만 첫 관리자 계정을 만들고 바로 로그인시킨다."""
+    origin = request.headers.get("origin")
+    if origin and origin.rstrip("/") != settings.public_origin.rstrip("/"):
+        raise HTTPException(status_code=403, detail="허용되지 않은 Origin입니다")
+    if db.get_bind().dialect.name == "postgresql":
+        # 동시에 들어온 설정 요청이 관리자를 둘 만들지 않도록 막는다
+        db.execute(text("LOCK TABLE admins IN EXCLUSIVE MODE"))
+    if _has_admin(db):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="관리자 계정이 이미 설정되어 있습니다")
+    admin = Admin(email=payload.email.lower(), password_hash=hash_password(payload.password))
+    db.add(admin)
+    db.flush()
+    return _start_session(admin, response, db)
 
 
 @router.get("/me")
