@@ -22,8 +22,10 @@ class Storage(ABC):
 
 
 class LocalStorage(Storage):
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, public: bool = False):
+        """public=True면 gateway(nginx, 다른 사용자)가 읽을 수 있도록 0644로, 아니면 소유자만 읽는 0600으로 만든다."""
         self.root = root.resolve()
+        self.file_mode = 0o644 if public else 0o600
         self.root.mkdir(parents=True, exist_ok=True)
 
     def _path(self, key: str) -> Path:
@@ -39,7 +41,8 @@ class LocalStorage(Storage):
         path.parent.mkdir(parents=True, exist_ok=True)
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         total = 0
-        fd = os.open(path, flags, 0o600)
+        fd = os.open(path, flags, self.file_mode)
+        os.fchmod(fd, self.file_mode)  # umask와 상관없이 정확한 권한을 적용
         try:
             with os.fdopen(fd, "wb") as target:
                 while chunk := source.read(1024 * 1024):

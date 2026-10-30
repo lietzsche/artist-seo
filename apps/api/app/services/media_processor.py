@@ -41,7 +41,7 @@ def _jpeg_ready(image: Image.Image) -> Image.Image:
 
 def process_image(media: MediaAsset) -> str:
     originals = LocalStorage(settings.storage_root / "originals")
-    public = LocalStorage(settings.storage_root / "public")
+    public = LocalStorage(settings.storage_root / "public", public=True)
     original_path = originals._path(media.original_key)
     primary_key = ""
     with Image.open(original_path) as source:
@@ -123,7 +123,7 @@ def _run_ffmpeg(arguments: list[str], timeout: int = 3700, heartbeat: Callable[[
 
 def process_video(media: MediaAsset, heartbeat: Callable[[], None] | None = None) -> tuple[str, str, bool]:
     originals = LocalStorage(settings.storage_root / "originals")
-    public = LocalStorage(settings.storage_root / "public")
+    public = LocalStorage(settings.storage_root / "public", public=True)
     original_path = originals._path(media.original_key)
     video_key = f"{media.id}/playback.mp4"
     poster_key = f"{media.id}/poster.jpg"

@@ -38,3 +38,13 @@ def test_image_processor_creates_web_derivatives_without_upscale(tmp_path, monke
     assert (tmp_path / "public" / "media-id" / "320.jpg").is_file()
     assert not (tmp_path / "public" / "media-id" / "800.webp").exists()
 
+
+
+def test_public_files_are_world_readable_and_originals_private(tmp_path):
+    import stat
+    from io import BytesIO
+    from app.services.storage import LocalStorage
+    LocalStorage(tmp_path / "public", public=True).put("a/b.webp", BytesIO(b"x"))
+    LocalStorage(tmp_path / "originals").put("a/b.png", BytesIO(b"x"))
+    assert stat.S_IMODE((tmp_path / "public/a/b.webp").stat().st_mode) == 0o644
+    assert stat.S_IMODE((tmp_path / "originals/a/b.png").stat().st_mode) == 0o600
