@@ -13,9 +13,9 @@
 ```
 
 - `apps/web`: React + TypeScript + Vite + React Router + TanStack Query
-- `apps/api`: FastAPI + Pydantic + SQLAlchemy + Alembic, API 경로 `/api/v1`
+- `apps/api`: FastAPI + Pydantic + SQLAlchemy, 번호 붙은 SQL 마이그레이션, API 경로 `/api/v1`
 - `infra/nginx`: 동일 출처 gateway와 공개 미디어 설정
-- `docs`: 운영·이전·진행 문서, [DB 스키마](docs/db/schema.sql), [수동 테스트 시나리오](docs/test-scenarios.html)
+- `docs`: 운영·이전·진행 문서, [DB 스키마](apps/api/migrations/01_init.sql), [수동 테스트 시나리오](docs/test-scenarios.html)
 
 ## 필요 도구
 
@@ -125,7 +125,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.lock
 export DATABASE_URL=postgresql+psycopg://artist:dev@localhost:5432/artist
 export PUBLIC_ORIGIN=http://localhost:5173
-.venv/bin/alembic upgrade head
+.venv/bin/python -m app.migrate
 .venv/bin/uvicorn app.main:app --reload
 ```
 
@@ -140,16 +140,33 @@ export PUBLIC_ORIGIN=http://localhost:5173
 
 서버 용량에 맞게 `.env`에서 변경합니다. 관리자는 작품을 만든 뒤 사진·영상을 재개 가능한 청크 방식으로 올릴 수 있습니다. 이미지는 너비 800/1600/2400px의 JPEG/WebP, 영상은 포스터 이미지와 가로 1920px 이하 H.264 MP4로 변환됩니다. 작품을 삭제하면 휴지통으로 옮겨지기만 하고, `TRASH_RETENTION_DAYS` 설정은 있지만 기간이 지난 항목을 자동으로 지우는 기능은 아직 없습니다. HDR은 SDR 변환 후 BT.709 태그를 검증하며 검증 실패 시 성공 처리하지 않습니다. 구체적인 상태는 [진행표](docs/progress.md)를 확인하세요.
 
-## DB 스키마
+## DB 스키마와 마이그레이션
 
-테이블 정의(DDL)는 [docs/db/schema.sql](docs/db/schema.sql)에 있습니다. 마이그레이션(`apps/api/alembic/versions`)에서 자동으로 만든 파일이므로, 마이그레이션을 추가한 뒤에는 아래 명령으로 다시 만듭니다. DB에 접속하지 않고 SQL만 생성합니다.
+DB 구조는 `apps/api/migrations`의 번호 붙은 SQL 파일로 관리합니다. 지금은 [01_init.sql](apps/api/migrations/01_init.sql) 하나가 전체 스키마이고, 이후 변경은 파일을 추가하며 쌓아 갑니다.
 
-```bash
-cd apps/api
-DATABASE_URL=postgresql+psycopg://x:x@localhost/x .venv/bin/alembic upgrade head --sql > ../../docs/db/schema.sql
+```text
+apps/api/migrations/
+  01_init.sql                 # 초기 스키마
+  02_artworks_add_xxx.sql     # 다음 변경 (예시)
+  03_...sql
 ```
 
-실행 중인 DB에서 직접 보려면 `docker compose exec db psql -U artist -d artist -c '\d+ artworks'`처럼 확인합니다.
+API 컨테이너가 시작할 때 아직 적용하지 않은 파일을 번호 순서대로 실행하고, `schema_migrations` 테이블에 기록합니다.
+
+변경 규칙:
+
+1. 다음 번호로 새 파일을 만듭니다. 이름은 `NN_설명.sql`(두 자리 이상 숫자, 01부터 빠짐없이)입니다.
+2. 같은 변경을 `apps/api/app/models/entities.py`의 모델에도 반영합니다. 둘이 어긋나면 `pytest`가 실패합니다.
+3. 이미 적용된 파일은 고치지 않습니다. 내용이 바뀌면 API가 시작을 멈추므로, 수정할 내용도 새 번호 파일로 추가합니다.
+4. 파일 하나는 트랜잭션 하나로 실행되어, 중간에 실패하면 그 파일의 변경이 모두 취소됩니다. 그래서 `CREATE INDEX CONCURRENTLY`처럼 트랜잭션 안에서 실행할 수 없는 문장은 쓸 수 없습니다.
+
+```bash
+docker compose up -d --build                         # 새 파일 적용 (API 시작 시 자동)
+docker compose exec api python -m app.migrate --status   # 적용 상태 보기
+docker compose exec db psql -U artist -d artist -c '\d+ artworks'   # 실제 테이블 확인
+```
+
+이전 Alembic 마이그레이션으로 만든 DB도 그대로 넘겨받습니다. 첫 실행 때 `01_init.sql`이 빠진 테이블만 만들고 `alembic_version` 테이블을 지웁니다.
 
 ## 테스트
 
@@ -159,5 +176,7 @@ npm --prefix apps/web run build
 npm --prefix apps/web audit
 docker compose config --quiet
 ```
+
+`pytest`는 SQLite로 실행되며, SQL 마이그레이션이 모델과 맞는지도 검사합니다. 실제 PostgreSQL에 마이그레이션을 적용하는 테스트는 `TEST_POSTGRES_URL=postgresql+psycopg://사용자@호스트:포트/postgres`를 지정했을 때만 실행됩니다(임시 DB를 만들고 지움).
 
 PostgreSQL 동시성 통합 테스트와 Playwright E2E는 후속 단계에서 추가합니다.

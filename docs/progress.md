@@ -26,6 +26,7 @@
 - DB 기반 시리즈·전시 CRUD, 공개 전시 이력과 홈 전시, 작품 시리즈 필터
 - 숫자 정렬 순서를 통한 키보드 사용 가능한 시리즈·전시 정렬 대안
 - 첫 관리자 설정 화면, DB 기반 작가 프로필 관리
+- Alembic을 번호 붙은 SQL 마이그레이션(`apps/api/migrations`, `python -m app.migrate`)으로 교체
 - 기능별 데모 seed(`seed-demo`, `SEED_DEMO_DATA`), `.env` 없이 개발용 기본값 실행
 
 ## 구현 중 / 미완료

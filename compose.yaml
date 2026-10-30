@@ -35,7 +35,7 @@ services:
       context: ./apps/api
     # 시작할 때마다 DB 마이그레이션을 먼저 적용한다
     # 시작 순서: 마이그레이션 → ADMIN_EMAIL/ADMIN_PASSWORD 관리자 반영 → (SEED_DEMO_DATA=true이면) 데모 데이터
-    command: ["sh", "-c", "alembic upgrade head && python -m app.cli sync-admin && python -m app.cli seed-demo --if-enabled && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips '*'"]
+    command: ["sh", "-c", "python -m app.migrate && python -m app.cli sync-admin && python -m app.cli seed-demo --if-enabled && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips '*'"]
     env_file: *env-file
     environment: *app-env
     volumes:
