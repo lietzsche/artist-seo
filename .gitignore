@@ -1,0 +1,16 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+node_modules/
+dist/
+*.tsbuildinfo
+playwright-report/
+test-results/
+storage/*
+!storage/.gitkeep
+!storage/originals/.gitkeep
+!storage/public/.gitkeep
+!storage/tmp/.gitkeep
+
