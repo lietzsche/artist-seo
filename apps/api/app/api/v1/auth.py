@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 from app.api.deps import SESSION_COOKIE, current_session, require_csrf
-from app.api.v1.schemas import LoginIn
+from app.api.v1.schemas import LoginIn, SetupIn
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import expires_in, hash_password, new_session_token, verify_password
-from app.models import Admin, AdminSession, LoginAttempt
+from app.models import Admin, AdminSession, ArtistProfile, LoginAttempt
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
@@ -76,7 +76,7 @@ def setup_status(db: Session = Depends(get_db)) -> dict[str, bool]:
 
 
 @router.post("/setup", status_code=status.HTTP_201_CREATED)
-def setup(payload: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)) -> dict[str, str]:
+def setup(payload: SetupIn, request: Request, response: Response, db: Session = Depends(get_db)) -> dict[str, str]:
     """관리자가 하나도 없을 때만 첫 관리자 계정을 만들고 바로 로그인시킨다."""
     origin = request.headers.get("origin")
     if origin and origin.rstrip("/") != settings.public_origin.rstrip("/"):
@@ -88,6 +88,10 @@ def setup(payload: LoginIn, request: Request, response: Response, db: Session = 
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="관리자 계정이 이미 설정되어 있습니다")
     admin = Admin(email=payload.email.lower(), password_hash=hash_password(payload.password))
     db.add(admin)
+    if payload.artist_name.strip():
+        profile = db.get(ArtistProfile, 1) or ArtistProfile(id=1)
+        profile.name = payload.artist_name.strip()
+        db.add(profile)
     db.flush()
     return _start_session(admin, response, db)
 

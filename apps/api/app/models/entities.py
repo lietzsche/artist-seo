@@ -58,6 +58,19 @@ class AdminSession(Base):
     admin: Mapped[Admin] = relationship()
 
 
+class ArtistProfile(Base):
+    """사이트에 표시되는 작가 정보. 한 행(id=1)만 사용한다."""
+    __tablename__ = "artist_profile"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1, autoincrement=False)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    headline: Mapped[str] = mapped_column(String(300), default="")
+    intro: Mapped[str] = mapped_column(Text, default="")
+    bio: Mapped[str] = mapped_column(Text, default="")
+    cv: Mapped[str] = mapped_column(Text, default="")
+    location: Mapped[str] = mapped_column(String(120), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
 class LoginAttempt(Base):
     __tablename__ = "login_attempts"
     key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)

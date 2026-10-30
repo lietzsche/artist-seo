@@ -1,13 +1,14 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api, Artwork, Exhibition, MEDIA_BASE } from "../lib/api";
+import { api, Artwork, Exhibition, MEDIA_BASE, Profile } from "../lib/api";
 
 export function Home() {
   const query = useQuery({ queryKey: ["featured"], queryFn: () => api<{items: Artwork[]}>("/artworks?size=4") });
   const exhibitions = useQuery({ queryKey:["exhibitions"], queryFn:() => api<Exhibition[]>("/exhibitions") });
+  const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
   const current = exhibitions.data?.[0];
   return <>
-    <section className="hero"><p className="eyebrow">CONTEMPORARY ARTIST</p><h1>사라지는 빛과<br/>남겨진 표면</h1><p>서윤은 일상의 표면에 머무는 빛과 시간의 감각을 회화와 영상으로 기록합니다.</p><Link className="button" to="/works">작품 보기</Link></section>
+    <section className="hero"><p className="eyebrow">CONTEMPORARY ARTIST</p><h1>{profile.data?.headline || profile.data?.name || "작품과 전시"}</h1>{profile.data?.intro && <p>{profile.data.intro}</p>}<Link className="button" to="/works">작품 보기</Link></section>
     <section className="section"><div className="section-heading"><h2>선정 작품</h2><Link to="/works">전체 보기</Link></div>
       {query.isPending && <p role="status">작품을 불러오는 중입니다.</p>}
       {query.isError && <p role="alert">작품을 불러오지 못했습니다.</p>}

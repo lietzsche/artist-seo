@@ -22,11 +22,12 @@ class Settings(BaseSettings):
     media_worker_concurrency: int = Field(default=1, ge=1, le=2)
     login_max_attempts: int = Field(default=5, ge=3, le=20)
     login_window_minutes: int = Field(default=15, ge=1, le=1440)
+    seed_demo_data: bool = False
 
     @model_validator(mode="after")
     def secure_production(self) -> "Settings":
         if self.app_env == "production":
-            if len(self.app_secret_key) < 32 or self.app_secret_key.startswith("development"):
+            if len(self.app_secret_key) < 32 or self.app_secret_key.startswith(("development", "replace-with")):
                 raise ValueError("production requires a strong APP_SECRET_KEY")
             if not self.session_cookie_secure:
                 raise ValueError("production requires SESSION_COOKIE_SECURE=true")

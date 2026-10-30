@@ -1,5 +1,21 @@
 name: artist-portfolio
 
+# .env 파일이 없어도 개발용 기본값으로 실행된다.
+# .env(또는 셸 환경 변수)에 같은 이름의 값이 있으면 그 값이 우선한다.
+x-db-env: &db-env
+  POSTGRES_DB: ${POSTGRES_DB:-artist}
+  POSTGRES_USER: ${POSTGRES_USER:-artist}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+
+x-app-env: &app-env
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-artist}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-artist}}
+  STORAGE_ROOT: /data
+  SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+
+x-env-file: &env-file
+  - path: .env
+    required: false
+
 services:
   gateway:
     build:
@@ -18,8 +34,10 @@ services:
     build:
       context: ./apps/api
     # 시작할 때마다 DB 마이그레이션을 먼저 적용한다
-    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips '*'"]
-    env_file: .env
+    # SEED_DEMO_DATA=true이면 데모 데이터도 넣는다(이미 있으면 건너뜀)
+    command: ["sh", "-c", "alembic upgrade head && python -m app.cli seed-demo --if-enabled && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips '*'"]
+    env_file: *env-file
+    environment: *app-env
     volumes:
       - artist_originals:/data/originals
       - artist_public:/data/public
@@ -39,7 +57,8 @@ services:
     build:
       context: ./apps/api
     command: ["python", "-m", "app.worker"]
-    env_file: .env
+    env_file: *env-file
+    environment: *app-env
     volumes:
       - artist_originals:/data/originals
       - artist_public:/data/public
@@ -53,7 +72,7 @@ services:
 
   db:
     image: postgres:17.6-alpine
-    env_file: .env
+    environment: *db-env
     volumes:
       - artist_db:/var/lib/postgresql/data
     healthcheck:
@@ -66,8 +85,10 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:2026.10.0
     profiles: ["tunnel"]
-    command: ["tunnel", "--no-autoupdate", "run", "--token", "$${CLOUDFLARE_TUNNEL_TOKEN}"]
-    env_file: .env
+    # cloudflared는 TUNNEL_TOKEN 환경 변수를 토큰으로 읽는다
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
     depends_on:
       - gateway
     restart: unless-stopped

@@ -8,6 +8,23 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=10, max_length=200)
 
 
+class SetupIn(LoginIn):
+    artist_name: str = Field(default="", max_length=120)
+
+
+class ProfileIn(BaseModel):
+    name: str = Field(default="", max_length=120)
+    headline: str = Field(default="", max_length=300)
+    intro: str = Field(default="", max_length=2000)
+    bio: str = Field(default="", max_length=10000)
+    cv: str = Field(default="", max_length=10000)
+    location: str = Field(default="", max_length=120)
+
+
+class ProfileOut(ProfileIn):
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ArtworkIn(BaseModel):
     slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=200)
     title: str = Field(min_length=1, max_length=300)

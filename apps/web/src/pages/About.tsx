@@ -1,8 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { api, Exhibition } from "../lib/api";
+import { api, Exhibition, FALLBACK_NAME, Profile } from "../lib/api";
+
+const lines = (text: string) => text.split("\n").map(line => line.trim()).filter(Boolean);
 
 export function About() {
   const exhibitions = useQuery({queryKey:["exhibitions"],queryFn:()=>api<Exhibition[]>("/exhibitions")});
-  return <section className="section prose page"><p className="eyebrow">ABOUT</p><h1>서윤</h1><p>서윤은 서울을 기반으로 활동하는 가상의 현대미술 작가입니다. 이 소개는 실제 작가 정보로 쉽게 교체할 수 있도록 작성된 예시입니다.</p><h2>약력</h2><p>2026 가상 예술대학 회화과 졸업</p><h2>전시 이력</h2>{exhibitions.isPending&&<p role="status">전시 이력을 불러오는 중입니다.</p>}{exhibitions.data?.length===0&&<p>등록된 전시 이력이 없습니다.</p>}<ol className="history">{exhibitions.data?.map(item=><li key={item.id}><time>{item.start_date?.slice(0,4)||"연도 미정"}</time><span>《{item.title}》, {item.venue}{item.location&&`, ${item.location}`}</span></li>)}</ol></section>;
+  const profile = useQuery({queryKey:["profile"],queryFn:()=>api<Profile>("/profile")});
+  const p = profile.data;
+  return <section className="section prose page"><p className="eyebrow">ABOUT</p><h1>{p?.name || FALLBACK_NAME}</h1>{p?.location && <p className="eyebrow">{p.location}</p>}{p && lines(p.bio).map((line,i)=><p key={i}>{line}</p>)}{p && !p.bio && <p>아직 작가 소개가 없습니다.</p>}{p && lines(p.cv).length > 0 && <><h2>약력</h2><ul className="history">{lines(p.cv).map((line,i)=><li key={i}>{line}</li>)}</ul></>}<h2>전시 이력</h2>{exhibitions.isPending&&<p role="status">전시 이력을 불러오는 중입니다.</p>}{exhibitions.data?.length===0&&<p>등록된 전시 이력이 없습니다.</p>}<ol className="history">{exhibitions.data?.map(item=><li key={item.id}><time>{item.start_date?.slice(0,4)||"연도 미정"}</time><span>《{item.title}》, {item.venue}{item.location&&`, ${item.location}`}</span></li>)}</ol></section>;
 }
 

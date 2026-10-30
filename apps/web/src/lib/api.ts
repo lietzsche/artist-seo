@@ -6,6 +6,9 @@ export type Artwork = { id: string; slug: string; title: string; year: number | 
 export type Series = { id:string; name:string; description:string; sort_order:number };
 export type Exhibition = { id:string; slug:string; title:string; venue:string; location:string; start_date:string|null; end_date:string|null; description:string; is_published:boolean; sort_order:number };
 
+export type Profile = { name:string; headline:string; intro:string; bio:string; cv:string; location:string };
+export const FALLBACK_NAME = "작가 포트폴리오";
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...init });
   if (!response.ok) {

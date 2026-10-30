@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수동 테스트 시나리오</title>
+<style>
+:root {
+  --bg: #f7f5f0; --surface: #ffffff; --text: #1d1d1b; --muted: #6b6a66; --line: #e2ded4;
+  --accent: #2f5d50; --accent-soft: #e3eee9; --warn: #8a4b12; --warn-soft: #f8ecdc; --code: #f1eee6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --surface: #1f1f1d; --text: #ecebe6; --muted: #a3a19a; --line: #34332f;
+    --accent: #8cc7b3; --accent-soft: #23332e; --warn: #f0b77a; --warn-soft: #3a2c1c; --code: #2a2926;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --surface: #1f1f1d; --text: #ecebe6; --muted: #a3a19a; --line: #34332f;
+  --accent: #8cc7b3; --accent-soft: #23332e; --warn: #f0b77a; --warn-soft: #3a2c1c; --code: #2a2926;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+header h1 { font-size: 1.7rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); }
+.bar { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 14px 0; margin-top: 20px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.progress { flex: 1 1 220px; display: flex; align-items: center; gap: 10px; }
+.track { flex: 1; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.count { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .9rem; white-space: nowrap; }
+button, select { font: inherit; font-size: .88rem; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+.prep { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+.prep h2 { margin: 0 0 8px; font-size: 1.05rem; }
+.prep ol { margin: 0; padding-left: 20px; }
+.prep li { margin: 6px 0; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86em; background: var(--code); padding: 1px 6px; border-radius: 5px; word-break: break-all; }
+.cmd { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+.cmd code { flex: 1; display: block; padding: 7px 10px; }
+.cmd button { padding: 5px 10px; flex: none; }
+section.group { margin-top: 34px; }
+section.group > h2 { font-size: 1.15rem; margin: 0 0 4px; }
+section.group > p { margin: 0 0 12px; color: var(--muted); font-size: .92rem; }
+.case { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin: 10px 0; }
+.case.done { border-color: var(--accent); }
+.case.fail { border-color: var(--warn); }
+.case summary { list-style: none; cursor: pointer; padding: 14px 18px; display: flex; gap: 12px; align-items: baseline; }
+.case summary::-webkit-details-marker { display: none; }
+.id { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .82rem; min-width: 2.6em; }
+.title { flex: 1; font-weight: 600; }
+.badge { font-size: .76rem; padding: 2px 9px; border-radius: 99px; background: var(--line); color: var(--muted); white-space: nowrap; }
+.done .badge { background: var(--accent-soft); color: var(--accent); }
+.fail .badge { background: var(--warn-soft); color: var(--warn); }
+.body { padding: 0 18px 16px 18px; border-top: 1px solid var(--line); }
+.body h3 { font-size: .82rem; letter-spacing: .04em; color: var(--muted); margin: 14px 0 4px; font-weight: 600; }
+.body ol, .body ul { margin: 0; padding-left: 20px; }
+.body li { margin: 3px 0; }
+.note { margin-top: 12px; padding: 9px 12px; background: var(--warn-soft); color: var(--warn); border-radius: 8px; font-size: .88rem; }
+.result { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.result button[aria-pressed="true"].ok { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.result button[aria-pressed="true"].ng { background: var(--warn); border-color: var(--warn); color: var(--surface); }
+textarea { width: 100%; margin-top: 8px; font: inherit; font-size: .9rem; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 2.6em; resize: vertical; }
+a { color: var(--accent); }
+@media (max-width: 560px) { .case summary { flex-wrap: wrap; } .title { flex-basis: calc(100% - 3.6em); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>수동 테스트 시나리오</h1>
+    <p>브라우저로 직접 따라 해 보는 기능별 확인 목록입니다. 결과(통과/실패)와 메모는 이 브라우저에만 저장됩니다.</p>
+  </header>
+
+  <div class="bar">
+    <div class="progress"><div class="track"><div class="fill" id="fill"></div></div><span class="count" id="count"></span></div>
+    <select id="filter" aria-label="표시할 항목">
+      <option value="all">전체 보기</option>
+      <option value="todo">미확인만</option>
+      <option value="fail">실패만</option>
+    </select>
+    <button type="button" id="expand">모두 펼치기</button>
+    <button type="button" id="reset">결과 초기화</button>
+  </div>
+
+  <div class="prep">
+    <h2>시작 전 준비</h2>
+    <ol>
+      <li>깨끗한 상태에서 시작하려면 볼륨까지 지우고 다시 띄웁니다. <b>DB와 업로드 파일이 모두 지워집니다.</b>
+        <div class="cmd"><code>docker compose down -v &amp;&amp; docker compose up -d --build</code><button type="button" data-copy>복사</button></div></li>
+      <li>컨테이너가 모두 떴는지 확인합니다. <code>api</code>가 <code>healthy</code>가 될 때까지 기다립니다.
+        <div class="cmd"><code>docker compose ps</code><button type="button" data-copy>복사</button></div></li>
+      <li>접속 주소: <a href="http://localhost:8080" target="_blank" rel="noopener">http://localhost:8080</a> · API 문서: <a href="http://localhost:8080/api/v1/docs" target="_blank" rel="noopener">/api/v1/docs</a></li>
+      <li>A 그룹(첫 설정)을 먼저 하고, C 그룹부터는 데모 데이터를 넣은 뒤 진행합니다.</li>
+    </ol>
+  </div>
+
+  <main id="list"></main>
+</div>
+
+<script>
+const GROUPS = [
+  { id: "A", title: "A. 첫 실행과 관리자 설정", desc: "관리자 계정이 하나도 없는 상태에서 시작합니다." },
+  { id: "B", title: "B. 로그인과 보안", desc: "A에서 만든 관리자 계정을 사용합니다." },
+  { id: "C", title: "C. 데모 데이터와 공개 화면", desc: "먼저 C1로 데모 데이터를 넣습니다." },
+  { id: "D", title: "D. 작가 프로필", desc: "관리자로 로그인한 상태에서 진행합니다." },
+  { id: "E", title: "E. 작품과 미디어 관리", desc: "관리자 화면(/admin)에서 진행합니다. 테스트용 JPG/PNG 사진과 짧은 MP4 영상을 준비하세요." },
+  { id: "F", title: "F. 시리즈와 전시 관리", desc: "관리자 화면 아래쪽 '시리즈', '전시' 영역입니다." },
+  { id: "G", title: "G. 구매 문의", desc: "공개 화면과 API 문서를 함께 씁니다." },
+  { id: "H", title: "H. 실행 환경", desc: "터미널에서 확인합니다." },
+];
+
+const CASES = [
+  // A
+  { id: "A1", g: "A", title: "어느 페이지로 들어가도 관리자 설정 화면이 나온다",
+    steps: ["<a href='http://localhost:8080' target='_blank' rel='noopener'>http://localhost:8080</a> 접속", "주소창에 <code>/works</code>, <code>/about</code>을 직접 입력해 접속"],
+    expect: ["항상 <code>/admin</code>의 <b>관리자 계정 설정</b> 화면으로 이동한다", "작가 이름, 관리자 이메일, 비밀번호, 비밀번호 확인 입력칸이 있다"] },
+  { id: "A2", g: "A", title: "입력 오류를 막는다",
+    steps: ["비밀번호와 비밀번호 확인을 다르게 입력하고 제출", "비밀번호를 9자 이하로 입력하고 제출"],
+    expect: ["'비밀번호가 서로 다릅니다.' 메시지가 나온다", "10자 미만이면 브라우저가 제출을 막는다", "계정이 만들어지지 않는다(새로고침해도 설정 화면 유지)"] },
+  { id: "A3", g: "A", title: "첫 관리자 계정을 만들면 바로 로그인된다",
+    steps: ["작가 이름(예: 홍길동), 이메일, 10자 이상 비밀번호를 입력하고 <b>관리자 계정 만들기</b>"],
+    expect: ["로그인 화면을 거치지 않고 <b>작품 관리</b> 화면이 나온다", "오른쪽 위에 입력한 이메일이 보인다", "사이트 헤더 왼쪽과 브라우저 탭 제목에 입력한 작가 이름이 보인다"] },
+  { id: "A4", g: "A", title: "설정 화면은 한 번만 쓸 수 있다",
+    steps: ["시크릿 창에서 <code>http://localhost:8080</code> 접속", "API 문서에서 <code>POST /api/v1/auth/setup</code>을 다른 이메일로 실행"],
+    expect: ["시크릿 창에서는 설정 화면이 아니라 홈이 나오고, <code>/admin</code>에서는 <b>관리자 로그인</b> 화면이 나온다", "API는 409와 '관리자 계정이 이미 설정되어 있습니다'를 돌려준다"] },
+
+  // B
+  { id: "B1", g: "B", title: "로그인 성공과 실패",
+    steps: ["시크릿 창에서 <code>/admin</code> 접속", "틀린 비밀번호로 로그인", "맞는 비밀번호로 로그인"],
+    expect: ["틀리면 '이메일 또는 비밀번호가 올바르지 않습니다'", "맞으면 작품 관리 화면으로 바뀐다"] },
+  { id: "B2", g: "B", title: "로그인 시도 제한",
+    steps: ["시크릿 창에서 같은 이메일로 틀린 비밀번호를 연속 6번 입력"],
+    expect: ["6번째부터 '로그인 시도가 너무 많습니다' 메시지가 나온다", "15분(LOGIN_WINDOW_MINUTES) 동안 맞는 비밀번호도 막힌다"],
+    note: "이 시험 뒤에는 같은 브라우저·이메일로 15분간 로그인할 수 없습니다. 마지막에 하거나 다른 이메일로 시험하세요." },
+  { id: "B3", g: "B", title: "비밀번호 재설정 시 기존 세션 취소",
+    steps: ["관리자로 로그인해 둔 상태에서 터미널 명령 실행 후 새 비밀번호 입력", "관리자 화면 새로고침"],
+    cmd: "docker compose run --rm api python -m app.cli reset-password 관리자이메일",
+    expect: ["새로고침하면 로그인 화면으로 돌아간다", "새 비밀번호로만 로그인된다"] },
+  { id: "B4", g: "B", title: "로그인 없이 관리자 API를 호출할 수 없다",
+    steps: ["시크릿 창에서 <code>http://localhost:8080/api/v1/artworks/admin/all</code> 접속"],
+    expect: ["401과 '로그인이 필요합니다'가 나온다"] },
+
+  // C
+  { id: "C1", g: "C", title: "데모 데이터 넣기",
+    steps: ["터미널에서 명령 실행", "같은 명령을 한 번 더 실행"],
+    cmd: "docker compose exec api python -m app.cli seed-demo",
+    expect: ["첫 실행: '[seed] 작품 생성 …' 줄이 여러 개 나온다", "두 번째: '작품 건너뜀(이미 있음)'만 나오고 중복 생성되지 않는다", "A3에서 작가 이름을 정했다면 '작가 프로필: 이미 설정됨 — 유지'가 나온다"],
+    note: "이미지·영상 변환은 media-worker가 처리하므로 화면에 나타나기까지 몇 초~수십 초 걸립니다." },
+  { id: "C2", g: "C", title: "작품 목록에 공개 작품만 보인다",
+    steps: ["<code>/works</code> 접속"],
+    expect: ["아침의 빛, 겹쳐진 표면, 밤의 창, 움직이는 빛, 이미지 없는 작품 5개가 보인다", "'비공개 습작'과 '휴지통 작품'은 보이지 않는다", "이미지 없는 작품은 회색 자리표시 박스로 보인다"] },
+  { id: "C3", g: "C", title: "비공개·삭제 작품은 주소로 들어가도 안 보인다",
+    steps: ["<code>/works/demo-draft-study</code> 접속", "<code>/works/demo-trashed-work</code> 접속"],
+    expect: ["둘 다 '작품을 찾을 수 없습니다'가 나온다"] },
+  { id: "C4", g: "C", title: "판매 상태와 가격 표시",
+    steps: ["'아침의 빛' 상세", "'겹쳐진 표면' 상세", "'밤의 창' 상세"],
+    expect: ["아침의 빛: 판매 가능, 가격 3,000,000원 표시, <b>구매 문의</b> 버튼 있음", "겹쳐진 표면: 판매 가능, 가격 항목 없음, 구매 문의 버튼 있음", "밤의 창: 판매 완료, 구매 문의 버튼 없음"] },
+  { id: "C5", g: "C", title: "필터",
+    steps: ["작품 목록에서 시리즈 '빛의 층위' 선택", "시리즈 '전체', 판매 상태 '판매 완료' 선택"],
+    expect: ["빛의 층위: 아침의 빛, 겹쳐진 표면 2개", "판매 완료: 밤의 창 1개"] },
+  { id: "C6", g: "C", title: "이미지 변환 결과",
+    steps: ["'아침의 빛' 상세에서 이미지에 마우스 오른쪽 → 새 탭에서 이미지 열기"],
+    expect: ["주소가 <code>/media/…</code>로 시작한다", "세로 이미지(겹쳐진 표면)는 세로 비율 그대로 보인다"] },
+  { id: "C7", g: "C", title: "영상 재생",
+    steps: ["'움직이는 빛' 상세 접속", "재생 버튼 클릭"],
+    expect: ["자동 재생되지 않고 포스터 이미지가 먼저 보인다", "색 막대 테스트 영상이 4초간 재생되고 소리(삐 소리)가 난다"] },
+  { id: "C8", g: "C", title: "전시 표시",
+    steps: ["홈 접속", "<code>/about</code> 접속"],
+    expect: ["홈 아래쪽에 '데모 개인전: 표면의 시간'이 보인다", "소개 페이지 전시 이력에 2개(개인전, 단체전)만 있고 '준비 중인 전시(비공개)'는 없다"] },
+
+  // D
+  { id: "D1", g: "D", title: "작가 프로필 수정이 모든 화면에 반영된다",
+    steps: ["<code>/admin</code>의 <b>작가 프로필</b>에서 이름, 활동 지역, 홈 대표 문구, 홈 소개 문장, 작가 소개, 약력(여러 줄)을 바꾸고 저장", "홈, 소개 페이지, 브라우저 탭 제목 확인"],
+    expect: ["'저장했습니다.'가 나온다", "헤더·푸터·탭 제목에 새 이름", "홈 큰 제목에 대표 문구, 그 아래 소개 문장", "소개 페이지에 지역, 작가 소개, 약력이 줄마다 나뉘어 보인다"] },
+  { id: "D2", g: "D", title: "빈 프로필일 때의 기본 표시",
+    steps: ["작가 이름과 대표 문구를 비우고 저장", "홈과 소개 페이지 확인"],
+    expect: ["헤더에 '작가 포트폴리오'가 보인다", "홈 큰 제목에 '작품과 전시'가 보인다", "소개 페이지에 '아직 작가 소개가 없습니다.'(작가 소개를 비운 경우)"] },
+
+  // E
+  { id: "E1", g: "E", title: "작품 만들기는 비공개로 생성된다",
+    steps: ["제목, 영문 슬러그(예: <code>my-first-work</code>), 연도, 재료 입력 후 <b>비공개 작품 만들기</b>", "공개 화면 <code>/works</code> 확인"],
+    expect: ["관리자 작품 목록 맨 위에 '비공개'로 추가된다", "공개 작품 목록에는 나타나지 않는다"],
+    note: "관리자 화면에는 아직 작품 공개 전환·수정 버튼이 없습니다. 공개하려면 API 문서의 PUT /api/v1/artworks/admin/{id}를 사용해야 합니다." },
+  { id: "E2", g: "E", title: "사진 업로드와 변환",
+    steps: ["E1에서 만든 작품의 <b>사진·영상 추가</b>로 JPG 또는 PNG 업로드", "진행 상태 문구 확인"],
+    expect: ["'원본 업로드 중' → '형식 확인 및 원본 저장 중' → '변환 작업 대기 중' 순서로 바뀐다", "잠시 뒤 관리자 목록의 '미디어 N개' 숫자가 늘어난다"] },
+  { id: "E3", g: "E", title: "영상 업로드",
+    steps: ["짧은 MP4 또는 MOV 영상 업로드"],
+    expect: ["업로드가 끝나고 변환 작업이 등록된다", "실패하면 '서버 현황'의 '최근 실패 작업'에 오류 내용이 보인다"] },
+  { id: "E4", g: "E", title: "지원하지 않는 파일 거부",
+    steps: ["텍스트 파일의 확장자를 <code>.jpg</code>로 바꿔 업로드"],
+    expect: ["'지원하는 이미지 또는 영상 파일이 아닙니다' 오류가 난다", "미디어 개수가 늘지 않는다"] },
+  { id: "E5", g: "E", title: "업로드 취소",
+    steps: ["큰 파일(수백 MB 이상)을 올리다가 <b>업로드 취소</b>"],
+    expect: ["업로드가 멈추고 미디어가 추가되지 않는다", "서버 현황의 '진행 중 예약량'이 0으로 돌아간다"] },
+  { id: "E6", g: "E", title: "서버 현황",
+    steps: ["관리자 화면 위쪽 <b>서버 현황</b> 확인"],
+    expect: ["저장된 원본, 진행 중 예약량, 디스크 잔여 공간, 새 구매 문의 수가 보인다", "C1 이후라면 새 구매 문의가 2 이상이다"] },
+
+  // F
+  { id: "F1", g: "F", title: "시리즈 추가",
+    steps: ["이름과 정렬 순서를 넣고 <b>시리즈 추가</b>", "같은 이름으로 한 번 더 추가"],
+    expect: ["목록에 추가되고 <code>/works</code> 시리즈 필터에도 나타난다", "같은 이름은 추가되지 않는다(409)"] },
+  { id: "F2", g: "F", title: "전시 추가와 공개 여부",
+    steps: ["'공개'를 체크하지 않은 전시 하나, 체크한 전시 하나 추가", "종료일을 시작일보다 빠르게 넣어 추가"],
+    expect: ["두 전시 모두 관리자 목록에 보인다", "<code>/about</code> 전시 이력에는 공개한 전시만 보인다", "날짜가 거꾸로면 추가되지 않는다"] },
+
+  // G
+  { id: "G1", g: "G", title: "작품에서 구매 문의 보내기",
+    steps: ["'아침의 빛' 상세에서 <b>구매 문의</b>", "동의 체크 없이 제출 시도", "모두 입력하고 제출"],
+    expect: ["동의 없이는 제출되지 않는다", "'문의가 접수되었습니다…' 메시지가 나온다", "관리자 서버 현황의 새 구매 문의 수가 1 늘어난다"] },
+  { id: "G2", g: "G", title: "연속 문의 제한",
+    steps: ["같은 이메일로 바로 한 번 더 문의"],
+    expect: ["'잠시 후 다시 문의해 주세요' 메시지가 나온다(같은 IP·이메일은 정시 기준 1시간 단위로 1번)"] },
+  { id: "G3", g: "G", title: "관리자 문의 확인",
+    steps: ["관리자로 로그인한 브라우저에서 <a href='http://localhost:8080/api/v1/docs' target='_blank' rel='noopener'>API 문서</a> 열기", "<code>GET /api/v1/inquiries/admin</code> → Try it out → Execute"],
+    expect: ["데모 문의 2건과 G1에서 보낸 문의가 최신순으로 보인다", "작품에서 보낸 문의는 <code>artwork_id</code>가 채워져 있다"],
+    note: "관리자 화면에는 아직 문의 목록이 없어 API 문서로 확인합니다." },
+
+  // H
+  { id: "H1", g: "H", title: "포트 구성",
+    steps: ["<code>http://localhost:8080/api/v1/health/ready</code> 접속", "<code>http://localhost:8000</code> 접속"],
+    expect: ["8080은 상태 정보(JSON)를 돌려준다", "8000은 연결되지 않는다(컨테이너 내부 전용)"] },
+  { id: "H2", g: "H", title: ".env 없이 실행",
+    steps: ["<code>.env</code>를 다른 이름으로 잠시 바꾸고 볼륨을 지운 뒤 실행", "확인 후 <code>.env</code> 이름 되돌리기"],
+    cmd: "mv .env .env.bak && docker compose down -v && docker compose up -d",
+    expect: ["오류 없이 떠서 http://localhost:8080 에 설정 화면이 나온다"],
+    note: "볼륨을 지우므로 데이터가 초기화됩니다. 끝나면 mv .env.bak .env 로 되돌리고 다시 down -v / up -d 하세요." },
+  { id: "H3", g: "H", title: "시작 시 데모 데이터 자동 넣기",
+    steps: ["볼륨을 지우고 SEED_DEMO_DATA=true로 실행", "로그 확인"],
+    cmd: "docker compose down -v && SEED_DEMO_DATA=true docker compose up -d && docker compose logs api | grep seed",
+    expect: ["로그에 '[seed] …' 줄이 보인다", "관리자 계정은 없으므로 접속하면 설정 화면이 먼저 나온다", "설정 후 데모 작품이 보인다"] },
+  { id: "H4", g: "H", title: "재시작해도 데이터 유지",
+    steps: ["데이터가 있는 상태에서 재시작"],
+    cmd: "docker compose down && docker compose up -d",
+    expect: ["작품, 업로드한 이미지, 관리자 계정이 그대로 남아 있다"] },
+];
+
+const KEY = "artist-seo-test-scenarios-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { state = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function render() {
+  const list = document.getElementById("list");
+  list.innerHTML = GROUPS.map(g => {
+    const cases = CASES.filter(c => c.g === g.id).map(c => {
+      const s = state[c.id] || {};
+      const cls = s.result === "pass" ? "done" : s.result === "fail" ? "fail" : "";
+      const badge = s.result === "pass" ? "통과" : s.result === "fail" ? "실패" : "미확인";
+      return `<details class="case ${cls}" data-id="${c.id}">
+        <summary><span class="id">${c.id}</span><span class="title">${c.title}</span><span class="badge">${badge}</span></summary>
+        <div class="body">
+          <h3>순서</h3><ol>${c.steps.map(x => `<li>${x}</li>`).join("")}</ol>
+          ${c.cmd ? `<div class="cmd"><code>${esc(c.cmd)}</code><button type="button" data-copy>복사</button></div>` : ""}
+          <h3>기대 결과</h3><ul>${c.expect.map(x => `<li>${x}</li>`).join("")}</ul>
+          ${c.note ? `<div class="note">${c.note}</div>` : ""}
+          <div class="result">
+            <button type="button" class="ok" data-result="pass" aria-pressed="${s.result === "pass"}">통과</button>
+            <button type="button" class="ng" data-result="fail" aria-pressed="${s.result === "fail"}">실패</button>
+          </div>
+          <textarea placeholder="메모 (실패 내용, 화면 상태 등)" aria-label="${c.id} 메모">${esc(s.memo || "")}</textarea>
+        </div></details>`;
+    }).join("");
+    return `<section class="group" data-group="${g.id}"><h2>${g.title}</h2><p>${g.desc}</p>${cases}</section>`;
+  }).join("");
+  applyFilter();
+  updateCount();
+}
+
+function updateCount() {
+  const total = CASES.length;
+  const done = CASES.filter(c => state[c.id]?.result).length;
+  const fails = CASES.filter(c => state[c.id]?.result === "fail").length;
+  document.getElementById("fill").style.width = `${(done / total) * 100}%`;
+  document.getElementById("count").textContent = `${done} / ${total} 확인${fails ? ` · 실패 ${fails}` : ""}`;
+}
+
+function applyFilter() {
+  const f = document.getElementById("filter").value;
+  document.querySelectorAll(".case").forEach(el => {
+    const r = state[el.dataset.id]?.result;
+    el.hidden = f === "todo" ? !!r : f === "fail" ? r !== "fail" : false;
+  });
+  document.querySelectorAll("section.group").forEach(sec => {
+    sec.hidden = [...sec.querySelectorAll(".case")].every(el => el.hidden);
+  });
+}
+
+document.addEventListener("click", e => {
+  const copy = e.target.closest("[data-copy]");
+  if (copy) {
+    const text = copy.previousElementSibling.textContent;
+    navigator.clipboard?.writeText(text).then(() => { copy.textContent = "복사됨"; setTimeout(() => copy.textContent = "복사", 1200); }).catch(() => {});
+    return;
+  }
+  const btn = e.target.closest("[data-result]");
+  if (btn) {
+    const id = btn.closest(".case").dataset.id;
+    const s = state[id] || (state[id] = {});
+    s.result = s.result === btn.dataset.result ? undefined : btn.dataset.result;
+    save();
+    const open = btn.closest(".case").open;
+    render();
+    document.querySelector(`.case[data-id="${id}"]`).open = open;
+  }
+});
+document.addEventListener("input", e => {
+  if (e.target.matches(".case textarea")) {
+    const id = e.target.closest(".case").dataset.id;
+    (state[id] || (state[id] = {})).memo = e.target.value;
+    save();
+  }
+});
+document.getElementById("filter").addEventListener("change", applyFilter);
+document.getElementById("expand").addEventListener("click", e => {
+  const items = [...document.querySelectorAll(".case:not([hidden])")];
+  const open = !items.every(el => el.open);
+  items.forEach(el => el.open = open);
+  e.target.textContent = open ? "모두 접기" : "모두 펼치기";
+});
+document.getElementById("reset").addEventListener("click", () => {
+  if (confirm("모든 결과와 메모를 지울까요?")) { state = {}; save(); render(); }
+});
+render();
+</script>
+</body>
+</html>

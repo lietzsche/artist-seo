@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.core.security import hash_password
 from io import BytesIO
@@ -167,3 +168,39 @@ def test_setup_rejects_foreign_origin(client):
     body = {"email":"owner@example.com", "password":"very-safe-password"}
     assert client.post("/api/v1/auth/setup", json=body, headers={"Origin":"https://evil.example"}).status_code == 403
     assert client.get("/api/v1/auth/setup").json() == {"needs_setup": True}
+
+
+def test_setup_sets_artist_name_and_profile_update(client):
+    assert client.get("/api/v1/profile").json()["name"] == ""
+    response = client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"very-safe-password", "artist_name":"홍길동"})
+    csrf = response.json()["csrf_token"]
+    assert client.get("/api/v1/profile").json()["name"] == "홍길동"
+    body = {"name":"김작가", "headline":"제목", "intro":"소개", "bio":"본문", "cv":"2020 졸업", "location":"부산"}
+    assert client.put("/api/v1/profile/admin", json=body).status_code == 403
+    assert client.put("/api/v1/profile/admin", json=body, headers={"X-CSRF-Token":csrf}).status_code == 200
+    assert client.get("/api/v1/profile").json() == body
+
+
+def test_seed_demo_is_idempotent_and_respects_visibility(client):
+    from app.services.seed import seed_demo
+    with SessionLocal() as db:
+        seed_demo(db)
+    with SessionLocal() as db:
+        second = seed_demo(db)
+    assert any("건너뜀" in line for line in second)
+    public = client.get("/api/v1/artworks?size=50").json()
+    slugs = {item["slug"] for item in public["items"]}
+    assert {"demo-morning-light", "demo-no-media"} <= slugs
+    assert "demo-draft-study" not in slugs and "demo-trashed-work" not in slugs
+    assert client.get("/api/v1/artworks/demo-draft-study").status_code == 404
+    assert client.get("/api/v1/profile").json()["name"] == "데모 작가"
+    exhibitions = {item["slug"] for item in client.get("/api/v1/exhibitions").json()}
+    assert exhibitions == {"demo-current-show", "demo-past-show"}
+    assert client.get("/api/v1/auth/setup").json() == {"needs_setup": True}
+    with SessionLocal() as db:
+        job = db.scalar(select(MediaJob).join(MediaAsset).join(Artwork).where(Artwork.slug == "demo-morning-light"))
+        job_id = job.id
+    execute_job(job_id)
+    with SessionLocal() as db:
+        media = db.scalar(select(MediaAsset).join(Artwork).where(Artwork.slug == "demo-morning-light"))
+        assert media.status.value == "ready" and media.public_key
