@@ -17,12 +17,15 @@
 - 관리자 전용 원본 다운로드, 단일 HTTP Range와 private/no-store 응답
 - 이미지 EXIF 방향 반영, ICC→sRGB 변환, 메타데이터를 제거한 JPEG/WebP 파생본
 - 800/1600/2400px 설정과 원본보다 확대하지 않는 멱등 이미지 worker 처리
+- 1080p 이하 H.264/AAC MP4 영상, JPEG 포스터, 자동 재생 없는 공개 플레이어
+- HDR 전달함수 감지, zscale/tonemap SDR 변환 및 BT.709 출력 태그 검증
+- worker CPU·메모리·시간 제한, lease heartbeat, 종료 시 FFmpeg 프로세스 그룹 정리
 
 ## 구현 중 / 미완료
 
 - 공개 예제 seed
 - 업로드 만료 정리와 병렬 요청 스트레스 검증, 관리자 용량 현황
-- FFmpeg 영상 재생본·포스터/HDR 판별
+- HDR 샘플을 이용한 시각적 톤매핑 품질 검수와 다양한 MOV/WebM 호환성 시험
 - worker heartbeat·실제 처리·멱등 완료·중단 자식 프로세스 정리
 - 관리자 미디어/시리즈/전시/문의/사용량 UI와 키보드 정렬
 - 다중 Range와 공개 미디어의 세밀한 응답 헤더
@@ -43,6 +46,8 @@
 - `docker compose config --quiet`: 통과
 - API 컨테이너 이미지 빌드: 통과, FFmpeg 포함
 - PostgreSQL 17 컨테이너에서 `alembic upgrade head`: 통과
+- FFmpeg 생성 640×360 H.264/AAC 샘플: 재생본·포스터 생성 및 ffprobe 재검증 통과
+- FFmpeg heartbeat 경로를 사용한 320×180 추가 샘플 변환 통과
 
-아직 브라우저/Playwright, 실제 이미지·영상 변환, 서비스 재시작 후 복구는 검증하지 않았습니다.
+아직 브라우저/Playwright, 실제 HDR 촬영본, 서비스 재시작 후 복구는 검증하지 않았습니다.
 

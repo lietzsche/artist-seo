@@ -1,5 +1,6 @@
 import hashlib
 import fcntl
+import json
 import os
 import shutil
 import subprocess
@@ -49,19 +50,19 @@ def _capacity_check(db: Session, requested: int) -> None:
         raise HTTPException(status_code=507, detail="서버 디스크의 최소 잔여 공간을 확보할 수 없습니다")
 
 
-def _detect(path: Path) -> tuple[str, str, int | None, int | None, int | None]:
+def _detect(path: Path) -> tuple[str, str, int | None, int | None, int | None, bool]:
     try:
         with Image.open(path) as image:
             image.verify()
             content_type = IMAGE_FORMATS.get(image.format or "")
         if content_type:
             with Image.open(path) as image:
-                return "image", content_type, image.width, image.height, None
+                return "image", content_type, image.width, image.height, None, False
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         pass
     try:
         result = subprocess.run(
-            ["ffprobe", "-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries", "format=format_name,duration:stream=codec_type,width,height", "-of", "default=noprint_wrappers=1", str(path)],
+            ["ffprobe", "-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries", "format=format_name,duration:stream=codec_type,width,height,color_transfer", "-of", "json", str(path)],
             capture_output=True,
             text=True,
             timeout=20,
@@ -69,16 +70,15 @@ def _detect(path: Path) -> tuple[str, str, int | None, int | None, int | None]:
         )
     except (FileNotFoundError, subprocess.SubprocessError) as exc:
         raise HTTPException(status_code=415, detail="지원하는 이미지 또는 영상 파일이 아닙니다") from exc
-    values: dict[str, str] = {}
-    for line in result.stdout.splitlines():
-        if "=" in line:
-            key, value = line.split("=", 1)
-            values.setdefault(key, value)
-    format_name = values.get("format_name", "")
+    probe = json.loads(result.stdout)
+    format_info = probe.get("format", {})
+    video_stream = next((item for item in probe.get("streams", []) if item.get("codec_type") == "video"), {})
+    format_name = format_info.get("format_name", "")
     if format_name not in VIDEO_FORMAT_NAMES and not any(x in format_name.split(",") for x in ("mov", "mp4", "webm", "matroska")):
         raise HTTPException(status_code=415, detail="MP4, MOV, WebM 영상만 지원합니다")
-    duration = int(float(values.get("duration", "0")) * 1000) if values.get("duration") else None
-    return "video", "video/mp4" if "mp4" in format_name or "mov" in format_name else "video/webm", int(values["width"]) if values.get("width") else None, int(values["height"]) if values.get("height") else None, duration
+    duration = int(float(format_info.get("duration", "0")) * 1000) if format_info.get("duration") else None
+    is_hdr = video_stream.get("color_transfer") in {"smpte2084", "arib-std-b67"}
+    return "video", "video/mp4" if "mp4" in format_name or "mov" in format_name else "video/webm", video_stream.get("width"), video_stream.get("height"), duration, is_hdr
 
 
 @router.post("/uploads", response_model=UploadOut, status_code=201)
@@ -155,7 +155,7 @@ def complete_upload(upload_id: str, session=Depends(require_csrf), db: Session =
     path = _temporary_path(upload)
     if not path.is_file() or path.stat().st_size != upload.expected_bytes or upload.received_bytes != upload.expected_bytes:
         raise HTTPException(status_code=409, detail="아직 모든 바이트가 업로드되지 않았습니다")
-    media_type, content_type, width, height, duration_ms = _detect(path)
+    media_type, content_type, width, height, duration_ms, source_is_hdr = _detect(path)
     digest = hashlib.sha256()
     with path.open("rb") as source:
         while chunk := source.read(1024 * 1024):
@@ -172,7 +172,7 @@ def complete_upload(upload_id: str, session=Depends(require_csrf), db: Session =
             raise HTTPException(status_code=500, detail="원본 저장 검증에 실패했습니다")
     except Exception:
         raise
-    media = MediaAsset(artwork_id=upload.artwork_id, original_key=original_key, original_filename=upload.original_filename, media_type=media_type, content_type=content_type, byte_size=copied, sha256=sha256, width=width, height=height, duration_ms=duration_ms, status=MediaStatus.pending)
+    media = MediaAsset(artwork_id=upload.artwork_id, original_key=original_key, original_filename=upload.original_filename, media_type=media_type, content_type=content_type, byte_size=copied, sha256=sha256, width=width, height=height, duration_ms=duration_ms, source_is_hdr=source_is_hdr, status=MediaStatus.pending)
     db.add(media)
     db.flush()
     job = MediaJob(media_id=media.id, kind=f"process_{media_type}")

@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from app.core.database import SessionLocal
 from app.models import MediaAsset, MediaJob
 from app.models.entities import MediaStatus
-from app.services.media_processor import process_image
+from app.services.media_processor import process_image, process_video
 
 stopping = False
 
@@ -36,6 +36,16 @@ def claim_job(owner: str) -> str | None:
         return job.id
 
 
+def heartbeat_job(job_id: str) -> None:
+    if stopping:
+        raise InterruptedError("worker가 종료 중입니다")
+    with SessionLocal.begin() as db:
+        job = db.get(MediaJob, job_id)
+        if not job or job.status != "running":
+            raise RuntimeError("작업 lease를 잃었습니다")
+        job.lease_expires_at = datetime.now(UTC) + timedelta(minutes=5)
+
+
 def execute_job(job_id: str) -> None:
     with SessionLocal() as db:
         job = db.get(MediaJob, job_id)
@@ -46,9 +56,12 @@ def execute_job(job_id: str) -> None:
         media_type = media.media_type
         db.expunge(media)
     try:
-        if media_type != "image":
-            raise RuntimeError("영상 변환 파이프라인은 아직 구현되지 않았습니다")
-        public_key = process_image(media)
+        if media_type == "image":
+            public_key, poster_key, hdr_to_sdr = process_image(media), None, False
+        elif media_type == "video":
+            public_key, poster_key, hdr_to_sdr = process_video(media, heartbeat=lambda: heartbeat_job(job_id))
+        else:
+            raise RuntimeError("지원하지 않는 미디어 유형입니다")
     except Exception as exc:
         with SessionLocal.begin() as db:
             job = db.get(MediaJob, job_id)
@@ -66,6 +79,8 @@ def execute_job(job_id: str) -> None:
         media = db.get(MediaAsset, media_id)
         if job and media:
             media.public_key = public_key
+            media.poster_key = poster_key
+            media.hdr_to_sdr = hdr_to_sdr
             media.status = MediaStatus.ready
             job.status = "completed"
             job.progress = 100

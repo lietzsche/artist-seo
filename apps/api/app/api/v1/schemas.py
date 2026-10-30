@@ -27,10 +27,13 @@ class MediaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
     public_key: str | None
+    poster_key: str | None
     media_type: str
     content_type: str
     width: int | None
     height: int | None
+    source_is_hdr: bool
+    hdr_to_sdr: bool
     status: str
     is_primary: bool
 

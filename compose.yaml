@@ -46,6 +46,8 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    mem_limit: 1536m
+    cpus: 1.5
 
   db:
     image: postgres:17.6-alpine
