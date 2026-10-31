@@ -303,3 +303,15 @@ def test_admin_reads_and_marks_inquiries(client):
     assert client.patch(f"/api/v1/inquiries/admin/{items[0]['id']}", json={"status":"done"}, headers=headers).json()["status"] == "done"
     assert client.get("/api/v1/admin/overview").json()["new_inquiries"] == 0
     assert client.patch(f"/api/v1/inquiries/admin/{items[0]['id']}", json={"status":"spam"}, headers=headers).status_code == 422
+
+
+def test_web_manifest_uses_artist_name(client):
+    first = client.get("/api/v1/manifest.webmanifest")
+    assert first.headers["content-type"].startswith("application/manifest+json")
+    assert first.json()["short_name"] == "Artist Portf"
+    csrf = client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"very-safe-password", "artist_name":"서지훈"}).json()["csrf_token"]
+    assert client.get("/api/v1/manifest.webmanifest").json()["name"] == "서지훈 — Works"
+    client.put("/api/v1/profile/admin", json={"name":"서지훈", "name_en":"Noah"}, headers={"X-CSRF-Token": csrf})
+    manifest = client.get("/api/v1/manifest.webmanifest").json()
+    assert (manifest["name"], manifest["short_name"], manifest["display"]) == ("Noah — Works", "Noah", "standalone")
+    assert {icon["sizes"] for icon in manifest["icons"]} >= {"192x192", "512x512"}

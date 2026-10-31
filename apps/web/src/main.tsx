@@ -37,6 +37,11 @@ const router = createBrowserRouter([{
 }]);
 const queryClient = new QueryClient();
 
+// 앱 설치용 서비스 워커 (배포된 사이트에서만)
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("/sw.js").catch(() => undefined); });
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode><QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider></React.StrictMode>,
 );

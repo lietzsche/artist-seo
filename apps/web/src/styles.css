@@ -414,3 +414,9 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
   border: 1px solid var(--line); border-radius: 50%;
 }
 @media (max-width: 760px) { .home-hero::before { display: none; } }
+
+/* 하단 ‘앱으로 설치’ 버튼과 아이폰 안내 */
+.install-btn { background: none; border: 1px solid var(--line); border-radius: 99px; padding: .15rem .7rem; color: var(--ink); font-size: .78rem; cursor: pointer; }
+.install-btn:hover { border-color: var(--accent); }
+.install-tip { flex-basis: 100%; margin: 0; text-align: right; color: var(--text-2); }
+@media (max-width: 760px) { .install-tip { text-align: left; } }

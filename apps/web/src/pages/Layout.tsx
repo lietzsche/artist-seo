@@ -3,6 +3,7 @@ import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, Profile } from "../lib/api";
 import { switchPath, useLang } from "../lib/i18n";
+import { useInstall } from "../lib/install";
 
 // 관리 화면과 가이드는 한국어 전용이라 언어 전환을 숨긴다
 const KOREAN_ONLY = ["/admin", "/guide"];
@@ -34,6 +35,8 @@ export function Layout() {
   const p = profile.data ? localize(profile.data) : null;
   const name = p?.name || t.fallbackName;
   const [scrolled, setScrolled] = useState(false);
+  const install = useInstall();
+  const [showIosTip, setShowIosTip] = useState(false);
 
   useEffect(() => { document.title = `${name} — ${t.siteTitle}`; }, [name, t.siteTitle]);
   useEffect(() => { document.documentElement.lang = koreanOnly ? "ko" : lang; }, [lang, koreanOnly]);
@@ -64,7 +67,12 @@ export function Layout() {
     <footer className="site-footer">
       <div className="container">
         <span>© {new Date().getFullYear()} {name}{p?.location ? ` · ${p.location}` : ""}</span>
-        <nav aria-label={t.footerMenu}><Link to={to("/works")}>{t.works}</Link><Link to={to("/about")}>{t.about}</Link><Link to={to("/contact")}>{t.contact}</Link><Link to="/admin">{t.admin}</Link></nav>
+        <nav aria-label={t.footerMenu}>
+          <Link to={to("/works")}>{t.works}</Link><Link to={to("/about")}>{t.about}</Link><Link to={to("/contact")}>{t.contact}</Link><Link to="/admin">{t.admin}</Link>
+          {install.mode === "prompt" && <button type="button" className="install-btn" onClick={() => void install.install()}>{t.install}</button>}
+          {install.mode === "ios" && <button type="button" className="install-btn" aria-expanded={showIosTip} onClick={() => setShowIosTip(v => !v)}>{t.install}</button>}
+        </nav>
+        {showIosTip && install.mode === "ios" && <p className="install-tip" role="status">{t.iosInstall}</p>}
       </div>
     </footer>
   </>;

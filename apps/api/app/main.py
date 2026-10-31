@@ -11,6 +11,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
-for router in (health.router, auth.router, artworks.router, collections.router, inquiries.router, media.router, admin.router, profile.router):
+for router in (health.router, auth.router, artworks.router, collections.router, inquiries.router, media.router, admin.router, profile.router, profile.manifest_router):
     app.include_router(router, prefix="/api/v1")
 
