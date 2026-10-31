@@ -1,24 +1,25 @@
-/* 어두운 갤러리 톤: 순수한 검정 대신 따뜻한 먹색 바탕, 살짝 누른 흰 글자, 강조는 브라스 한 가지만 쓴다.
-   위로 올라오는 면(벽 → 패널)일수록 조금씩 밝아진다. 글자 대비: 본문 15.5:1, 보조 6.5:1 이상 */
+/* 해부도·설계도 톤 (theme.jpg에서 뽑은 색): 거의 검은 먹색 바탕에 뼈·바랜 종이 색 글자, 강조색도 금색 대신 밝은 뼈색 한 가지.
+   배경에 아주 옅은 제도용 격자와 + 표시, 작품 모서리에 맞춤 표시를 둔다. 글자 대비: 본문 14.3:1, 보조 6.0:1 이상 */
 :root {
   color-scheme: dark;
-  accent-color: #c6a66f; /* 체크박스·진행 막대 */
-  --bg: #0e0d0c;
-  --wall: #161513;
-  --surface: #1c1a18;
-  --ink: #ebe5da;
-  --text-2: #c8c1b5;
-  --muted: #9b958a;
-  --faint: #6a655d;
-  --line: #2a2824;
-  --accent: #c6a66f;
-  --sold: #e0806f;
-  --ok: #8fc0a0;
-  --warn: #dcae6a;
-  --bad: #e88e80;
-  --ok-bg: rgba(143, 192, 160, .12);
-  --warn-bg: rgba(220, 174, 106, .12);
-  --bad-bg: rgba(232, 142, 128, .12);
+  accent-color: #d6c7ae; /* 체크박스·진행 막대 */
+  --bg: #0b0a08;
+  --wall: #12110e;
+  --surface: #191713;
+  --ink: #e3dacb;
+  --text-2: #bdb3a4;
+  --muted: #958c80;
+  --faint: #5c574f;
+  --line: #2a2723;
+  --grid: rgba(227, 218, 203, .035);
+  --accent: #d6c7ae;
+  --sold: #d98a7c;
+  --ok: #9fb9a2;
+  --warn: #d2b07a;
+  --bad: #d98a7c;
+  --ok-bg: rgba(159, 185, 162, .12);
+  --warn-bg: rgba(210, 176, 122, .12);
+  --bad-bg: rgba(217, 138, 124, .12);
   --serif: "Cormorant Garamond", "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", serif;
   --gutter: clamp(16px, 4vw, 56px);
   --max: 1440px;
@@ -34,7 +35,21 @@
   word-break: keep-all;
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; background: var(--bg); }
+/* 배경: 제도용 격자(160px) + 교차점의 + 표시 + 아주 옅은 인쇄 질감. 스크롤해도 고정 */
+body {
+  margin: 0; min-width: 320px; background-color: var(--bg);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cpath d='M73 80.5h15M80.5 73v15' stroke='%23e3dacb' stroke-opacity='.15'/%3E%3C/svg%3E"),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 160px 160px;
+  background-position: -80px -80px, 0 0, 0 0; /* + 표시를 격자 교차점에 맞춘다 */
+  background-attachment: fixed;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: .07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
 img, video { max-width: 100%; display: block; }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; }
@@ -328,7 +343,7 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
 
 /* 브라우저마다 모양이 달라지는 기본 선택 상자 대신 같은 모양으로 그린다 */
 .select-inline select { -webkit-appearance: none; appearance: none; border-radius: 0; min-width: 6.5rem; line-height: 1.4;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ebe5da' stroke-width='1.2'/%3E%3C/svg%3E") no-repeat right .2rem center / 10px 6px; }
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23e3dacb' stroke-width='1.2'/%3E%3C/svg%3E") no-repeat right .2rem center / 10px 6px; }
 @media (max-width: 760px) {
   /* iOS는 16px보다 작은 입력칸을 누르면 화면을 확대한다 */
   .select-inline select { font-size: 16px; }
@@ -372,3 +387,30 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
 .result-dialog::backdrop { background: rgba(0, 0, 0, .6); backdrop-filter: blur(2px); }
 .result-text { margin: 0; color: var(--text-2); line-height: 1.75; }
 .result-dialog form { margin-top: .5rem; display: flex; justify-content: flex-end; }
+
+/* 해부도 판(plate) 느낌: 작품 바깥 네 모서리에 얇은 맞춤 표시 */
+.work-card .frame::after, .wall::after {
+  content: ""; position: absolute; inset: -10px; pointer-events: none;
+  --m: var(--faint);
+  background:
+    linear-gradient(var(--m), var(--m)) left top / 14px 1px no-repeat,
+    linear-gradient(var(--m), var(--m)) left top / 1px 14px no-repeat,
+    linear-gradient(var(--m), var(--m)) right top / 14px 1px no-repeat,
+    linear-gradient(var(--m), var(--m)) right top / 1px 14px no-repeat,
+    linear-gradient(var(--m), var(--m)) left bottom / 14px 1px no-repeat,
+    linear-gradient(var(--m), var(--m)) left bottom / 1px 14px no-repeat,
+    linear-gradient(var(--m), var(--m)) right bottom / 14px 1px no-repeat,
+    linear-gradient(var(--m), var(--m)) right bottom / 1px 14px no-repeat;
+  transition: opacity .3s;
+}
+.wall { position: relative; }
+.work-card:hover .frame::after { --m: var(--muted); }
+
+/* 홈 첫 화면: 그림 속 큰 원처럼 제목 뒤에 얇은 원 하나 */
+.home-hero { position: relative; isolation: isolate; }
+.home-hero::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  width: clamp(320px, 46vw, 720px); aspect-ratio: 1; left: calc(var(--gutter) - clamp(80px, 10vw, 180px)); bottom: clamp(1rem, 6vh, 4rem);
+  border: 1px solid var(--line); border-radius: 50%;
+}
+@media (max-width: 760px) { .home-hero::before { display: none; } }
