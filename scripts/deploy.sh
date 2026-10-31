@@ -51,7 +51,14 @@ fi
 
 # 4. 빌드·실행
 echo "==> 이미지 빌드 및 컨테이너 시작"
-compose up -d --build --remove-orphans
+if ! compose up -d --build --remove-orphans; then
+  compose logs --tail 20 api
+  if compose logs api 2>/dev/null | grep -q "password authentication failed"; then
+    echo "원인: DB 볼륨이 예전 비밀번호로 만들어져 있습니다." >&2
+    echo "  데이터를 버려도 되면: docker compose --profile tunnel down -v 후 다시 배포" >&2
+  fi
+  fail "컨테이너 시작 실패"
+fi
 
 # 5. 상태 확인
 echo "==> 로컬 상태 확인 (http://127.0.0.1:8080)"
