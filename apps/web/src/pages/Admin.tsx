@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { api, AUTH_EXPIRED_EVENT } from "../lib/api";
 import { ArtworkManager } from "./ArtworkManager";
 import { CollectionManager } from "./CollectionManager";
@@ -90,6 +91,7 @@ export function Admin() {
     <div className="admin-top">
       <div><p className="eyebrow">Admin</p><h1>사이트 관리</h1></div>
       <div className="sub" style={{ display: "flex", gap: "1rem", alignItems: "center", fontSize: ".85rem" }}>
+        <Link to="/guide" className="link-btn" style={{ fontSize: ".85rem" }}>사용 가이드</Link>
         <span className="muted">{me.data.email}</span>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => void logout()}>로그아웃</button>
       </div>
