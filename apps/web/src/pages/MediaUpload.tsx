@@ -4,6 +4,12 @@ import { API_BASE, api } from "../lib/api";
 type Props = { artworkId: string; csrf: string; onComplete: () => void };
 type UploadState = { id: string; received_bytes: number };
 
+// 선택창은 모바일에서 사진·영상이 모두 보이도록 image/*, video/* 로 열고, 지원 형식은 여기서 거른다.
+// (형식을 하나씩 나열하면 일부 안드로이드 사진 선택기가 영상만 보여준다. 최종 확인은 서버가 파일 내용으로 한다)
+const SUPPORTED = /\.(jpe?g|png|webp|mp4|mov|m4v|webm)$/i;
+const SUPPORTED_TYPES = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"];
+const isSupported = (file: File) => SUPPORTED_TYPES.includes(file.type) || (!file.type && SUPPORTED.test(file.name));
+
 export function MediaUpload({ artworkId, csrf, onComplete }: Props) {
   const [stage, setStage] = useState("");
   const [progress, setProgress] = useState(0);
@@ -52,6 +58,12 @@ export function MediaUpload({ artworkId, csrf, onComplete }: Props) {
   async function startMany(files: FileList) {
     // 여러 파일을 고르면 하나씩 차례로 올린다
     const list = Array.from(files);
+    const rejected = list.filter(file => !isSupported(file));
+    if (rejected.length) {
+      setStage("실패"); setCurrent("");
+      setError(`지원하지 않는 형식입니다: ${rejected.map(f => f.name).join(", ")} (JPG·PNG·WebP 이미지, MP4·MOV·WebM 영상만 가능. 아이폰 HEIC 사진은 JPG로 바꿔 올려 주세요.)`);
+      return;
+    }
     for (let i = 0; i < list.length; i++) {
       setCurrent(list.length > 1 ? `${i + 1}/${list.length} · ${list[i].name}` : list[i].name);
       const ok = await start(list[i]);
@@ -63,13 +75,13 @@ export function MediaUpload({ artworkId, csrf, onComplete }: Props) {
     <div className="line">
       <label className="btn btn-ghost btn-sm" style={{ cursor: active ? "not-allowed" : "pointer" }}>
         사진·영상 올리기
-        <input type="file" multiple hidden accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" disabled={active}
+        <input type="file" multiple hidden accept="image/*,video/*" disabled={active}
           onChange={event => { const files = event.target.files; if (files?.length) void startMany(files); event.target.value = ""; }} />
       </label>
       <span className="muted">JPG·PNG·WebP 이미지, MP4·MOV·WebM 영상 · 여러 개 선택 가능</span>
     </div>
     {stage && <div className="line" role="status"><span>{current && <strong>{current}</strong>} {stage}</span>{active && <button type="button" className="link-btn" onClick={() => void cancel()}>업로드 취소</button>}</div>}
     {active && progress > 0 && <progress max="100" value={progress}>{progress}%</progress>}
-    {error && <p className="err" role="alert">{error} 같은 파일을 다시 선택하면 재시도합니다.</p>}
+    {error && <p className="err" role="alert">{error}{stage === "실패" && !error.startsWith("지원하지") ? " 같은 파일을 다시 선택하면 재시도합니다." : ""}</p>}
   </div>;
 }
