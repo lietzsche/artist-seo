@@ -2,7 +2,6 @@ import hashlib
 from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.api.deps import require_admin, require_csrf
 from app.api.v1.schemas import InquiryIn, InquiryOut, InquiryStatusIn
@@ -11,6 +10,9 @@ from app.core.database import get_db
 from app.models import Artwork, Inquiry
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
+
+# 문의 수는 제한하지 않는다. 한 곳에서 요청이 몰리는 공격은 Cloudflare가 앞단에서 막고,
+# 자동 입력 봇은 숨겨진 website 칸(허니팟)으로 거른다.
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -26,11 +28,7 @@ def create_inquiry(payload: InquiryIn, request: Request, db: Session = Depends(g
     fingerprint = hashlib.sha256(f"{settings.app_secret_key}:{ip}:{payload.email.lower()}".encode()).hexdigest()
     inquiry = Inquiry(**payload.model_dump(exclude={"website"}), fingerprint=fingerprint, created_bucket=bucket)
     db.add(inquiry)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=429, detail="잠시 후 다시 문의해 주세요") from None
+    db.commit()
     return {"id": inquiry.id, "message": "문의가 접수되었습니다"}
 
 

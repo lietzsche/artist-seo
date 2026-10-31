@@ -1,7 +1,7 @@
 import enum
 import uuid
 from datetime import UTC, date, datetime
-from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -213,7 +213,7 @@ class UploadSession(Base):
 
 class Inquiry(Base):
     __tablename__ = "inquiries"
-    __table_args__ = (UniqueConstraint("fingerprint", "created_bucket", name="uq_inquiry_rate_bucket"),)
+    __table_args__ = (Index("ix_inquiries_fingerprint_created_at", "fingerprint", "created_at"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
     artwork_id: Mapped[str | None] = mapped_column(ForeignKey("artworks.id", ondelete="SET NULL"), index=True)
     name: Mapped[str] = mapped_column(String(120))

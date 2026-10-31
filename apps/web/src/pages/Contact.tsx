@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, Profile } from "../lib/api";
@@ -8,24 +8,23 @@ export function Contact() {
   const { lang, t, to, profile: localize } = useLang();
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
   const [params] = useSearchParams();
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  // 보내기 결과는 놓치지 않도록 화면 가운데 팝업으로 알린다
+  const [result, setResult] = useState<{ kind: "ok" | "bad"; text: string } | null>(null);
   const [sending, setSending] = useState(false);
   const artworkTitle = params.get("title");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(""); setSending(true);
+    setResult(null); setSending(true);
     const formEl = event.currentTarget;
     const form = new FormData(formEl);
     try {
       await api("/inquiries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ artwork_id: params.get("artwork") || null, name: form.get("name"), email: form.get("email"), message: form.get("message"), consent: form.get("consent") === "on", website: form.get("website") }) });
-      setMessage(t.sent);
+      setResult({ kind: "ok", text: t.sent });
       formEl.reset();
     } catch (e) {
-      // 서버 오류 문구는 한국어라, 영어 페이지에서는 영어 안내로 바꿔 보여준다
-      if (e instanceof ApiError && e.status === 429) setError(t.tooMany);
-      else setError(lang === "ko" && e instanceof Error ? e.message : t.sendFailed);
+      // 서버 오류 문구는 한국어라 한국어 페이지에서만 그대로 보여주고, 연결 실패 등은 공통 안내를 쓴다
+      setResult({ kind: "bad", text: lang === "ko" && e instanceof ApiError ? `${t.sendFailed} (${e.message})` : t.sendFailed });
     }
     finally { setSending(false); }
   }
@@ -44,9 +43,8 @@ export function Contact() {
       <label className="check"><input type="checkbox" name="consent" required /> {t.consent}</label>
       <label className="honeypot" aria-hidden="true">{t.website}<input name="website" tabIndex={-1} autoComplete="off" /></label>
       <div><button className="btn" type="submit" disabled={sending}>{sending ? t.sending : t.send}</button></div>
-      {message && <p className="notice success" role="status">{message}</p>}
-      {error && <p className="notice error" role="alert">{error}</p>}
     </form>
+    {result && <ResultDialog kind={result.kind} text={result.text} onClose={() => setResult(null)} />}
   </section>;
 }
 
@@ -71,4 +69,16 @@ function Payment({ profile, note }: { profile: Profile; note: string }) {
     </dl>
     <p>{note || t.paymentDefault}</p>
   </section>;
+}
+
+/** 보내기 결과 팝업. 확인을 누르거나 Esc로 닫는다 */
+function ResultDialog({ kind, text, onClose }: { kind: "ok" | "bad"; text: string; onClose: () => void }) {
+  const { t } = useLang();
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  return <dialog ref={ref} className={`result-dialog ${kind}`} onClose={onClose} aria-labelledby="result-title">
+    <p className="eyebrow" id="result-title">{kind === "ok" ? t.sentTitle : t.failTitle}</p>
+    <p className="result-text">{text}</p>
+    <form method="dialog"><button className="btn" autoFocus>{t.ok}</button></form>
+  </dialog>;
 }

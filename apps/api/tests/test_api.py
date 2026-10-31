@@ -51,12 +51,15 @@ def test_login_attempt_limit(client):
     assert client.post("/api/v1/auth/login", json=body).status_code == 429
 
 
-def test_inquiry_requires_consent_and_rate_limits(client):
+def test_inquiry_requires_consent_and_is_not_rate_limited(client):
     body = {"name":"구매자", "email":"buyer@example.com", "message":"작품 구매 가능 여부를 문의합니다.", "consent":False, "website":""}
     assert client.post("/api/v1/inquiries", json=body).status_code == 422
     body["consent"] = True
-    assert client.post("/api/v1/inquiries", json=body).status_code == 201
-    assert client.post("/api/v1/inquiries", json=body).status_code == 429
+    # 같은 사람이 여러 작품을 연달아 문의해도 모두 받는다
+    for _ in range(5):
+        assert client.post("/api/v1/inquiries", json=body).status_code == 201
+    # 숨겨진 칸을 채우는 봇은 거른다
+    assert client.post("/api/v1/inquiries", json={**body, "website":"spam"}).status_code == 422
 
 
 def test_chunk_resume_complete_and_original_range(client):
