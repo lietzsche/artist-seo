@@ -23,11 +23,20 @@ export function coverOf(work: Artwork) {
 
 export const caption = (work: Artwork) => [work.year, work.medium, work.dimensions].filter(Boolean).join(", ");
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
+/** 로그인 세션이 끊겼을 때(401) 알리는 이벤트. 관리자 화면이 듣고 로그인 화면으로 돌아간다. */
+export const AUTH_EXPIRED_EVENT = "auth:expired";
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, { credentials: "include", ...init });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.detail || "요청을 처리하지 못했습니다.");
+    // /auth/* 자체의 401(로그인 전 상태 확인, 비밀번호 틀림)은 세션 만료가 아니다
+    if (response.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    throw new ApiError(body.detail || "요청을 처리하지 못했습니다.", response.status);
   }
   return response.status === 204 ? (undefined as T) : response.json();
 }

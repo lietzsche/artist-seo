@@ -1,6 +1,6 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { api, AUTH_EXPIRED_EVENT } from "../lib/api";
 import { ArtworkManager } from "./ArtworkManager";
 import { CollectionManager } from "./CollectionManager";
 import { ProfileManager } from "./ProfileManager";
@@ -17,6 +17,16 @@ export function Admin() {
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/auth/me"), retry: false });
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("works");
+
+  // 작업 중 세션이 만료되면 로그인 상태를 다시 확인해 로그인 화면으로 돌아간다
+  useEffect(() => {
+    const onExpired = () => {
+      setError("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+      void client.resetQueries({ queryKey: ["me"] });
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, [client]);
 
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
