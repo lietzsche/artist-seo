@@ -38,12 +38,25 @@
 4. 리소스를 만든다.
    ```bash
    cd apps/edge
-   npx wrangler d1 create artist-portfolio        # 출력된 database_id를 wrangler.jsonc에 넣는다
+   # 운영
+   npx wrangler d1 create artist-portfolio --location apac   # 출력된 database_id를 wrangler.jsonc에 넣는다
    npx wrangler r2 bucket create artist-originals
    npx wrangler r2 bucket create artist-public
-   npx wrangler secret put APP_SECRET_KEY         # 32자 이상 난수 (openssl rand -hex 32)
+   npx wrangler secret put APP_SECRET_KEY                    # 32자 이상 난수 (openssl rand -hex 32)
+   # 스테이징 (리허설용. 운영과 DB, 버킷, 키를 섞지 않는다)
+   npx wrangler d1 create artist-portfolio-staging --location apac
+   npx wrangler r2 bucket create artist-originals-staging
+   npx wrangler r2 bucket create artist-public-staging
+   npx wrangler secret put APP_SECRET_KEY --env staging      # 운영과 다른 값
    ```
-5. 개발용 값은 `apps/edge/.dev.vars`에 둔다(저장소에 올리지 않는다). 최소 `APP_SECRET_KEY=...`.
+   D1은 처음 만든 위치(primary)에서 쿼리를 처리하므로 `--location apac`로 한국 방문자와 가까운 곳에 만든다. 생성 후에는 위치를 바꿀 수 없다.
+5. 개발용 값은 `apps/edge/.dev.vars`에 둔다. **먼저 저장소 루트 `.gitignore`에 `.dev.vars`와 `.wrangler/`를 추가한다**(비밀 키와 로컬 DB가 커밋되지 않게). 내용:
+   ```text
+   APP_SECRET_KEY=<개발용 아무 32자 이상 문자열>
+   PUBLIC_ORIGIN=http://localhost:8787
+   SESSION_COOKIE_SECURE=false
+   ```
+   `.dev.vars` 값이 `wrangler.jsonc`의 `vars`보다 우선한다. `PUBLIC_ORIGIN`을 개발 주소로 바꾸지 않으면 Origin 검사로 관리자 설정과 로그인이 403이 되고, Secure 쿠키는 `http://`에서 일부 브라우저(Safari)가 저장하지 않는다.
 
 ## 3. 저장소 구조와 라이브러리
 
@@ -135,7 +148,7 @@ D1의 유니크 제약 오류는 메시지에 `UNIQUE constraint failed`가 들�
 |---|---|
 | `POST /media/uploads` (201) | 본문 `{artwork_id,filename,content_type,total_bytes}`. 허용 `content_type`: `image/jpeg`, `image/png`, `image/webp`, `video/mp4`, `video/webm` (아니면 415). 이미지가 `MAX_IMAGE_BYTES`(20MB)를 넘으면 413, 파일이 `MAX_FILE_BYTES`를 넘으면 413, `저장 중 + 예약 중 + 요청 > MAX_TOTAL_BYTES`면 507. 이 시점에 `media_id`를 미리 정하고 R2 멀티파트를 시작한다 |
 | `HEAD /media/uploads/{id}` | 관리자 본인 것만. 헤더 `Upload-Offset`, `Upload-Length`, `Upload-Status` |
-| `PATCH /media/uploads/{id}` (204) | 헤더 `Upload-Offset`이 `received_bytes`와 같아야 함(아니면 409 + 올바른 `Upload-Offset`). 본문 크기는 마지막 청크를 제외하고 정확히 5MiB. 선언 크기를 넘으면 413. 응답 헤더 `Upload-Offset` |
+| `PATCH /media/uploads/{id}` (204) | 헤더 `Upload-Offset`이 `received_bytes`와 같아야 함(아니면 409 + 올바른 `Upload-Offset`). 본문 크기는 마지막 청크를 제외하고 정확히 5MiB. 선언 크기를 넘으면 413. 응답 헤더 `Upload-Offset`. 같은 위치의 청크가 동시에 들어오면 하나만 처리하고 나머지는 409 (6.1) |
 | `POST /media/uploads/{id}/complete` | 본문(선택) `{width,height,duration_ms}`는 **영상일 때만** 사용. 응답 `{media_id,job_id\|null,sha256,content_type,byte_size}`. 상세는 6절 |
 | `DELETE /media/uploads/{id}` (204) | 진행 중이면 R2 멀티파트를 `abort()`하고 `cancelled`로 표시 |
 | `PUT /media/{media_id}/admin/poster` (신규) | 영상 포스터. 본문은 JPEG 이미지(2MiB 이하). 공개 버킷의 `{media_id}/poster.jpg`에 저장하고 `poster_key` 설정 |
@@ -294,6 +307,7 @@ CREATE TABLE upload_sessions (
   r2_bucket TEXT NOT NULL CHECK (r2_bucket IN ('originals', 'public')),
   r2_key TEXT NOT NULL UNIQUE,
   r2_upload_id TEXT NOT NULL,
+  chunk_lock_until TEXT,               -- 청크 처리 중 표시 (동시 요청 방지, 60초 후 만료)
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled', 'failed')),
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL,
@@ -358,7 +372,7 @@ API가 돌려주는 JSON은 현재와 같이 불리언을 `true/false`로, 시�
 | 단계 | 동작 |
 |---|---|
 | 시작 | 용량 검사 후 `media_id = randomUUID()`를 정한다. 이미지는 비공개 버킷 `{artwork_id}/{uuid}{확장자}`, **영상은 공개 버킷 `{media_id}/playback.{mp4\|webm}`**에 `createMultipartUpload`로 시작한다(영상은 변환이 없어 원본이 곧 재생 파일이다). `upload_id`, `key`, 버킷을 `upload_sessions`에 저장 |
-| 청크 | 파트 번호 = `offset / 5MiB + 1`. 본문을 `arrayBuffer()`로 읽어(5MiB) `uploadPart`하고 `upload_parts`에 upsert(같은 번호를 다시 보내면 덮어써서 재시도해도 안전), `received_bytes`를 갱신 |
+| 청크 | 파트 번호 = `offset / 5MiB + 1`. ① 선점: `UPDATE upload_sessions SET chunk_lock_until = <지금+60초> WHERE id = ? AND status = 'active' AND received_bytes = ? AND (chunk_lock_until IS NULL OR chunk_lock_until < <지금>)`. 바뀐 행이 0이면 409와 현재 `Upload-Offset`을 돌려준다. ② 본문을 `arrayBuffer()`로 읽어(5MiB) `uploadPart`. ③ `batch()`로 `upload_parts` upsert, `received_bytes = received_bytes + 크기`, `chunk_lock_until = NULL`을 함께 처리. ②가 실패하면 `chunk_lock_until`만 비운다. 현재 코드의 파일 잠금(`fcntl.flock`)을 대신한다 |
 | 완료 | `received_bytes == expected_bytes` 확인 → 저장된 파트를 번호순으로 모아 `complete()` → 객체 크기가 선언 크기와 같은지 확인 → 6.2~6.3 → `batch()`로 `media_assets` 추가, 세션 `completed` 처리 |
 | 취소/만료 | `abort()` 호출. 매일 도는 Cron이 만료된 세션(`UPLOAD_EXPIRY_HOURS`)을 같은 방식으로 정리 |
 
@@ -383,7 +397,7 @@ R2는 마지막 파트를 제외한 파트의 최소 크기가 5MiB이고, 파�
 업로드 완료 요청 안에서 동기로 처리한다.
 
 1. `IMAGES.input(stream).info()`로 원본 `width`, `height`를 얻는다(과금 없음).
-2. 폭 800, 1600, 2400 각각에 대해 `w = min(요청 폭, 원본 폭)`로 WebP(품질 85)와 JPEG(품질 88)를 만든다. 업스케일은 하지 않는다. 폭이 원본과 같아지면 거기서 멈춘다(현재 `process_image`와 동일).
+2. 폭 800, 1600, 2400 각각에 대해 `w = min(요청 폭, 원본 폭)`로 WebP(품질 85)와 JPEG(품질 88)를 만든다. 업스케일은 하지 않는다. 폭이 원본과 같아지면 거기서 멈춘다(현재 `process_image`와 동일). 모든 변환에 메타데이터 제거(`metadata: "none"`)를 지정해 사진의 위치(GPS)와 촬영 기기 정보가 공개 파일에 남지 않게 한다. 현재 Pillow도 EXIF를 버린다. 바인딩에서 이 옵션을 넣는 위치는 S2에서 확인한다.
 3. 결과는 `arrayBuffer()`로 받아(수 MB 이하) 공개 버킷 `{media_id}/{w}.webp`, `{media_id}/{w}.jpg`에 저장한다. 키 규칙이 현재와 같아서 프론트는 바뀌지 않는다.
 4. `public_key`는 현재 규칙대로 정한다: WebP 중 폭 1600 이하 가운데 가장 큰 것(없으면 첫 번째).
 5. 성공하면 `status='ready'`, `media_jobs`는 `completed`. 실패하면 `status='failed'`, `media_jobs.status='failed'`와 `error`를 기록한다(관리자 화면에 실패 작업으로 표시되고 `retry`로 다시 실행).
@@ -428,6 +442,7 @@ R2는 마지막 파트를 제외한 파트의 최소 크기가 5MiB이고, 파�
   "main": "src/index.ts",
   "compatibility_date": "2026-10-31",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,   // 운영은 도메인으로만 접근 (workers.dev 주소는 WAF 규칙을 우회한다)
   "assets": {
     "directory": "../web/dist",
     "binding": "ASSETS",
@@ -453,9 +468,39 @@ R2는 마지막 파트를 제외한 파트의 최소 크기가 5MiB이고, 파�
     "LOGIN_MAX_ATTEMPTS": "5",
     "LOGIN_WINDOW_MINUTES": "15"
   },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  "env": {
+    // 리허설용. 이름은 artist-portfolio-staging이 되고 https://artist-portfolio-staging.<계정>.workers.dev 로 열린다
+    // 바인딩과 vars는 환경 간에 상속되지 않으므로 전부 다시 적는다
+    "staging": {
+      "workers_dev": true,
+      "d1_databases": [
+        { "binding": "DB", "database_name": "artist-portfolio-staging", "database_id": "<스테이징 database_id>", "migrations_dir": "migrations" }
+      ],
+      "r2_buckets": [
+        { "binding": "MEDIA_ORIGINALS", "bucket_name": "artist-originals-staging" },
+        { "binding": "MEDIA_PUBLIC", "bucket_name": "artist-public-staging" }
+      ],
+      "images": { "binding": "IMAGES" },
+      "triggers": { "crons": ["0 18 * * *"] },
+      "vars": {
+        "PUBLIC_ORIGIN": "https://artist-portfolio-staging.<계정>.workers.dev",
+        "SESSION_COOKIE_SECURE": "true",
+        "MAX_FILE_BYTES": "5368709120",
+        "MAX_IMAGE_BYTES": "20971520",
+        "MAX_TOTAL_BYTES": "10737418240",
+        "UPLOAD_EXPIRY_HOURS": "24",
+        "LOGIN_MAX_ATTEMPTS": "5",
+        "LOGIN_WINDOW_MINUTES": "15"
+      }
+    }
+  }
 }
 ```
+
+- `PUBLIC_ORIGIN`은 환경마다 실제 접속 주소와 정확히 같아야 한다. 다르면 Origin 검사로 관리자 설정, 로그인 후 모든 변경 요청이 403이 된다(현재 `deploy-cloudflare.md`의 문제 해결 표와 같은 원인).
+- 스테이징 `MAX_TOTAL_BYTES`는 10GB로 낮춰 리허설 중 R2 비용이 늘지 않게 한다.
+- 스테이징은 도메인이 아니라 workers.dev 주소라 WAF 규칙이 적용되지 않는다. 주소를 외부에 알리지 않고, 리허설이 끝나면 `npx wrangler delete --env staging`으로 지우거나 데이터를 비운다.
 
 - 비밀 값 `APP_SECRET_KEY`는 `wrangler secret put`으로 넣는다(`vars`에 쓰지 않는다).
 - 도메인 연결은 컷오버 때 `routes: [{ "pattern": "example.com", "custom_domain": true }]`를 추가한다. 같은 호스트 이름의 기존 DNS 레코드가 있으면 연결이 실패하므로 Tunnel용 레코드를 먼저 지운다.
@@ -481,6 +526,30 @@ R2는 마지막 파트를 제외한 파트의 최소 크기가 5MiB이고, 파�
 - 이미 있는 이메일이면 비밀번호를 바꾸고 그 관리자의 세션을 모두 취소한다(현재 `reset-admin`과 같음).
 - **도메인을 공개하기 전에 이 스크립트로 관리자를 만든다.** 관리자가 없는 상태로 공개하면 첫 접속자가 `/auth/setup`으로 관리자가 될 수 있다.
 
+### 8.4 배포 절차 (`apps/edge/scripts/deploy.sh`)
+
+현재 `scripts/deploy.sh`를 대신한다. 순서가 중요하다.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+ENV_ARGS=()            # 스테이징이면: deploy.sh staging
+[[ "${1:-}" == "staging" ]] && ENV_ARGS=(--env staging)
+DB_NAME=$([[ "${1:-}" == "staging" ]] && echo artist-portfolio-staging || echo artist-portfolio)
+cd "$(dirname "$0")/.."
+npm ci && npm test                                         # Worker 테스트
+(cd ../web && npm ci && npm test && npm run build)         # 프론트 빌드 → ../web/dist
+npx wrangler d1 time-travel info "$DB_NAME"                # 되돌릴 시점(bookmark)을 로그에 남긴다
+npx wrangler d1 migrations apply "$DB_NAME" --remote "${ENV_ARGS[@]}"
+npx wrangler deploy "${ENV_ARGS[@]}"
+```
+
+- 마이그레이션을 배포보다 먼저 적용한다. 새 코드가 새 컬럼을 기대하기 때문이다. 그래서 마이그레이션은 기존 코드가 계속 동작하도록 "추가만" 하고(컬럼 추가, 기본값 지정), 컬럼 삭제와 이름 변경은 코드 배포 후 다음 마이그레이션에서 한다.
+- 문제가 생기면 코드는 `npx wrangler rollback`으로, DB는 출력된 bookmark로 `wrangler d1 time-travel restore`로 되돌린다.
+- 배포 후 `curl -fsS https://<도메인>/api/v1/health/ready`로 확인한다.
+- 프론트는 API와 같은 도메인이라 `VITE_API_BASE_URL`, `VITE_MEDIA_BASE_URL`을 지정하지 않는다.
+- GitHub Actions 자동 배포는 이번 범위에서 제외한다(필요하면 Cloudflare API 토큰을 저장소 Secret으로 두고 같은 스크립트를 실행).
+
 ## 9. 사전 시험 (구현 전에 한다)
 
 각 시험은 `apps/edge`에서 최소 Worker로 한다. 합격하지 못하면 대안을 적용하고 이 표에 결과를 적는다.
@@ -488,7 +557,7 @@ R2는 마지막 파트를 제외한 파트의 최소 크기가 5MiB이고, 파�
 | ID | 확인할 것 | 합격 기준 | 불합격 시 대안 |
 |---|---|---|---|
 | S1 | Argon2 WASM이 Workers에서 도는가. **기존 해시(`m=65536,t=3,p=2`) 검증이 되는가**. 1회 CPU 시간과 메모리 | 검증 성공, 1회 약 1초 이하, 메모리 초과 없음 | (a) 비용 조절: `m=19456,t=2,p=1`(OWASP 최소 권장)로 새 해시를 만들고 로그인 때 자동 재해시. (b) `node:crypto`(`nodejs_compat`)의 scrypt. (c) Web Crypto PBKDF2는 반복 횟수가 10만 번으로 제한되어 보안이 약하므로 마지막 수단 |
-| S2 | Images 바인딩의 출력 품질 | JPEG(EXIF 회전 포함), 다른 색공간(Display P3 등) ICC 프로필, 투명 PNG, 20MB 근처 파일 5종을 변환해 기존 Pillow 결과와 방향과 색이 같게 보임. `info()` 크기 일치 | 20MB 한도가 문제면 브라우저에서 파생본을 만들어 올리는 방식으로 대체(관리자 PC에서 캔버스로 리사이즈). 색이나 방향이 다르면 같은 방식 |
+| S2 | Images 바인딩의 출력 품질 | JPEG(EXIF 회전 포함), 다른 색공간(Display P3 등) ICC 프로필, 투명 PNG, 20MB 근처 파일 5종을 변환해 기존 Pillow 결과와 방향과 색이 같게 보임. `info()` 크기 일치. 결과 파일에 위치(GPS)와 촬영 기기 정보가 없음(`exiftool`로 확인) | 20MB 한도가 문제면 브라우저에서 파생본을 만들어 올리는 방식으로 대체(관리자 PC에서 캔버스로 리사이즈). 색이나 방향이 다르면 같은 방식 |
 | S3 | R2 멀티파트: Worker에서 5MiB 파트 업로드, 중간에 끊고 이어받기, 1GB 업로드 | 이어받기 성공, `complete` 후 크기 일치, 요청당 메모리와 CPU 문제 없음, 파트 크기 규칙 확인 | 청크 크기 조정 |
 | S4 | D1: `batch()` 롤백, 첫 관리자 동시 생성(요청 2개 동시) 중 1개만 성공, 유니크 오류 메시지 매핑, 전시 정렬 NULL 순서 | 모두 기대대로 | 쿼리 수정 |
 | S5 | 1GB와 5GB 객체의 `DigestStream` 해시 시간과 CPU | 완료 요청이 몇 분 안에 끝남 | 영상은 해시 생략(`sha256 NULL`) |
@@ -534,13 +603,13 @@ R2는 마지막 파트를 제외한 파트의 최소 크기가 5MiB이고, 파�
 
 | 단계 | 내용 | 끝났다고 보는 기준 |
 |---|---|---|
-| M0 | 2절 사전 준비. `apps/edge` 골격 생성, `wrangler dev` 구동 | `GET /api/v1/health/live`가 200 |
+| M0 | 2절 사전 준비(`.gitignore`에 `.dev.vars`, `.wrangler/` 추가 포함). `apps/edge` 골격 생성, `wrangler dev` 구동 | `GET /api/v1/health/live`가 200 |
 | M1 | 9절 S1~S7 시험. 결과를 9절 표에 기록 | 모든 시험에 합격하거나 대안이 정해짐 |
 | M2 | 스키마 적용, 공개 읽기 API(health, profile, manifest, artworks, series, exhibitions, years), 문의 접수 | 개발 서버에서 프론트 공개 페이지가 정상 표시 |
 | M3 | 인증(setup, login, me, logout), 세션, CSRF, 로그인 제한, 관리자 CRUD(프로필, 작품, 시리즈, 전시, 문의), 서버 현황 | 관리자 화면에서 영상과 이미지 업로드를 제외한 모든 기능 동작 |
 | M4 | 미디어: 업로드(멀티파트), 완료, 형식 확인, 이미지 파생본, `/media/*`, 원본 다운로드, 삭제, 영상 포스터, 실패 작업 재시도 | 이미지와 영상 업로드, 표시, 재생이 개발 환경에서 동작 |
 | M5 | 프론트 수정(7절), `docs/test-scenarios.html` 전체 점검, 11절 테스트 통과 | 시나리오와 테스트 모두 통과 |
-| M6 | 운영 설정: 시크릿, Cron, WAF 속도 제한, 결제 알림, Time Travel 확인. `*.workers.dev`에서 리허설. 원본 백업 방법 확정 | workers.dev에서 전체 시나리오 통과 |
+| M6 | 운영 설정: 시크릿, Cron, WAF 속도 제한, 결제 알림, Time Travel 확인. 스테이징(`deploy.sh staging`, 별도 D1과 버킷)에서 리허설. 원본 백업 방법 확정. 개인정보 고지 결정(13절) 반영 | 스테이징에서 전체 시나리오 통과 |
 | M7 | 컷오버: 관리자 생성 → Tunnel의 Public Hostname과 DNS 레코드 삭제 → 커스텀 도메인 연결 → 확인. 기존 Docker 스택은 중지만 하고 보관 | 도메인에서 전체 시나리오 통과 |
 | M8 | 1주 관찰 후 정리: `apps/api`, `compose.yaml`, `infra/`, `scripts/deploy.sh` 제거, `deploy-cloudflare.md`와 README 갱신 | 문서가 새 구성과 일치 |
 
@@ -554,6 +623,7 @@ R2는 마지막 파트를 제외한 파트의 최소 크기가 5MiB이고, 파�
 | WAF 속도 제한 규칙의 무료 한도 | 로그인과 문의에 각각 1개를 쓰려 함 | M6 |
 | Argon2 사양 (기존 유지 vs 비용 낮춤) | 기존 유지(`m=65536,t=3,p=2`) | S1 결과 |
 | 영상 파일 해시 | 계산 | S5 결과 |
+| 개인정보 국외 이전 고지 | 미정. 문의자의 이름과 이메일이 지금은 집 PC(국내)에 저장되지만, 이전 후에는 Cloudflare(해외 사업자, D1은 아시아 태평양 지역)에 저장된다. 현재 동의 문구(`lib/i18n.ts`의 `consent`)는 수집 목적만 적고 있다. 국외 이전 고지(이전받는 자, 국가, 항목, 보유 기간)가 필요한지 확인하고, 필요하면 동의 문구나 개인정보 처리방침 페이지를 추가한다. 법률 판단이 필요한 항목이다 | M6, 전환 전 |
 
 ## 부록 A. 데이터 이전 (지금은 하지 않음, 나중에 필요할 때)
 
