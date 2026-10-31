@@ -175,7 +175,8 @@ def test_setup_sets_artist_name_and_profile_update(client):
     response = client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"very-safe-password", "artist_name":"홍길동"})
     csrf = response.json()["csrf_token"]
     assert client.get("/api/v1/profile").json()["name"] == "홍길동"
-    body = {"name":"김작가", "headline":"제목", "intro":"소개", "bio":"본문", "cv":"2020 졸업", "location":"부산"}
+    body = {"name":"김작가", "headline":"제목", "intro":"소개", "bio":"본문", "cv":"2020 졸업", "location":"부산",
+            "name_en":"Kim", "headline_en":"Title", "intro_en":"Intro", "bio_en":"Bio", "cv_en":"2020 Graduated", "location_en":"Busan"}
     assert client.put("/api/v1/profile/admin", json=body).status_code == 403
     assert client.put("/api/v1/profile/admin", json=body, headers={"X-CSRF-Token":csrf}).status_code == 200
     assert client.get("/api/v1/profile").json() == body
@@ -239,3 +240,18 @@ def test_media_delete_hides_media_and_admin_list_hides_trash(client):
     assert client.delete(f"/api/v1/media/{media_id}/admin").status_code == 403
     assert client.delete(f"/api/v1/media/{media_id}/admin", headers={"X-CSRF-Token":csrf}).status_code == 204
     assert client.get("/api/v1/artworks/demo-morning-light").json()["media"] == []
+
+
+def test_english_fields_round_trip(client):
+    csrf = client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"very-safe-password"}).json()["csrf_token"]
+    headers = {"X-CSRF-Token": csrf}
+    series = client.post("/api/v1/series/admin", json={"name":"빛", "name_en":"Light"}, headers=headers).json()
+    assert series["name_en"] == "Light"
+    work = client.post("/api/v1/artworks/admin", json={"slug":"en-work", "title":"아침", "title_en":"Morning", "medium_en":"Oil on canvas", "description_en":"About light.", "price_text_en":"KRW 3,000,000", "is_published":True, "series_id":series["id"]}, headers=headers).json()
+    public = client.get("/api/v1/artworks/en-work").json()
+    assert (public["title"], public["title_en"], public["medium_en"], public["price_text_en"]) == ("아침", "Morning", "Oil on canvas", "KRW 3,000,000")
+    exhibition = client.post("/api/v1/exhibitions/admin", json={"slug":"solo", "title":"개인전", "title_en":"Solo Show", "venue_en":"Gallery", "is_published":True}, headers=headers)
+    assert exhibition.status_code == 201
+    assert client.get("/api/v1/exhibitions").json()[0]["title_en"] == "Solo Show"
+    # 영어 칸을 보내지 않는 예전 형식의 요청도 그대로 받는다
+    assert client.put(f"/api/v1/artworks/admin/{work['id']}", json={"slug":"en-work", "title":"아침"}, headers=headers).json()["title_en"] == ""

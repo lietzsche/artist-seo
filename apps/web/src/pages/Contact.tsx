@@ -1,8 +1,10 @@
 import { FormEvent, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
+import { useLang } from "../lib/i18n";
 
 export function Contact() {
+  const { lang, t, to } = useLang();
   const [params] = useSearchParams();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -16,25 +18,29 @@ export function Contact() {
     const form = new FormData(formEl);
     try {
       await api("/inquiries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ artwork_id: params.get("artwork") || null, name: form.get("name"), email: form.get("email"), message: form.get("message"), consent: form.get("consent") === "on", website: form.get("website") }) });
-      setMessage("문의가 접수되었습니다. 확인 후 회신 이메일로 답변드리겠습니다.");
+      setMessage(t.sent);
       formEl.reset();
-    } catch (e) { setError(e instanceof Error ? e.message : "문의 접수에 실패했습니다."); }
+    } catch (e) {
+      // 서버 오류 문구는 한국어라, 영어 페이지에서는 영어 안내로 바꿔 보여준다
+      if (e instanceof ApiError && e.status === 429) setError(t.tooMany);
+      else setError(lang === "ko" && e instanceof Error ? e.message : t.sendFailed);
+    }
     finally { setSending(false); }
   }
 
   return <section className="container contact">
     <div style={{ display: "grid", gap: "1.5rem", alignContent: "start" }}>
-      <h1 className="display">문의</h1>
-      <p className="lead" style={{ margin: 0 }}>작품 구매, 전시, 협업에 관한 문의를 남겨 주세요. 입력하신 정보는 답변 목적으로만 사용합니다.</p>
-      {artworkTitle && <p className="notice">문의 작품: <strong>{artworkTitle}</strong> · <Link to="/contact" style={{ textDecoration: "underline" }}>작품 선택 해제</Link></p>}
+      <h1 className="display">{t.contact}</h1>
+      <p className="lead" style={{ margin: 0 }}>{t.contactLead}</p>
+      {artworkTitle && <p className="notice">{t.inquiryWork} <strong>{artworkTitle}</strong> · <Link to={to("/contact")} style={{ textDecoration: "underline" }}>{t.clearWork}</Link></p>}
     </div>
     <form className="form" onSubmit={submit}>
-      <label className="field">이름<input name="name" required maxLength={120} autoComplete="name" /></label>
-      <label className="field">회신 이메일<input type="email" name="email" required maxLength={320} autoComplete="email" /></label>
-      <label className="field">문의 내용<textarea name="message" required minLength={10} maxLength={5000} rows={7} placeholder="10자 이상 입력해 주세요" /></label>
-      <label className="check"><input type="checkbox" name="consent" required /> 문의 답변을 위한 개인정보(이름, 이메일) 수집에 동의합니다.</label>
-      <label className="honeypot" aria-hidden="true">웹사이트<input name="website" tabIndex={-1} autoComplete="off" /></label>
-      <div><button className="btn" type="submit" disabled={sending}>{sending ? "보내는 중…" : "문의 보내기"}</button></div>
+      <label className="field">{t.name}<input name="name" required maxLength={120} autoComplete="name" /></label>
+      <label className="field">{t.email}<input type="email" name="email" required maxLength={320} autoComplete="email" /></label>
+      <label className="field">{t.message}<textarea name="message" required minLength={10} maxLength={5000} rows={7} placeholder={t.messageHint} /></label>
+      <label className="check"><input type="checkbox" name="consent" required /> {t.consent}</label>
+      <label className="honeypot" aria-hidden="true">{t.website}<input name="website" tabIndex={-1} autoComplete="off" /></label>
+      <div><button className="btn" type="submit" disabled={sending}>{sending ? t.sending : t.send}</button></div>
       {message && <p className="notice success" role="status">{message}</p>}
       {error && <p className="notice error" role="alert">{error}</p>}
     </form>

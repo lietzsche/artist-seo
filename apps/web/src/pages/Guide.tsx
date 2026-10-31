@@ -6,6 +6,7 @@ import { api } from "../lib/api";
 // 작가(사이트 관리자)를 위한 사용 설명서. 실제 관리자 화면의 메뉴 이름과 맞춰 적는다.
 const SECTIONS = [
   ["overview", "사이트 구성"],
+  ["lang", "영어·한국어 페이지"],
   ["start", "처음 시작하기"],
   ["works", "작품 올리기"],
   ["media", "사진·영상"],
@@ -37,7 +38,7 @@ export function Guide() {
       <div className="guide-body">
         <section id="overview">
           <h2>사이트 구성</h2>
-          <p>방문자가 보는 공개 페이지와, 작가만 들어가는 관리 화면으로 나뉩니다.</p>
+          <p>방문자가 보는 공개 페이지와, 작가만 들어가는 관리 화면으로 나뉩니다. 아래 공개 페이지는 기본이 영어입니다.</p>
           <table className="guide-table">
             <thead><tr><th>주소</th><th>내용</th></tr></thead>
             <tbody>
@@ -46,9 +47,22 @@ export function Guide() {
               <tr><td>/works/작품주소</td><td>작품 상세. 사진·영상, 재료, 크기, 가격, (판매 가능 작품만) 문의 버튼</td></tr>
               <tr><td><Link to="/about">/about</Link></td><td>작가 소개, 약력, 전시 이력</td></tr>
               <tr><td><Link to="/contact">/contact</Link></td><td>구매·전시·협업 문의 양식</td></tr>
+              <tr><td><Link to="/ko">/ko</Link></td><td>한국어 페이지. <code>/ko/works</code>, <code>/ko/about</code>처럼 위 주소 앞에 <code>/ko</code>를 붙입니다</td></tr>
               <tr><td><Link to="/admin">/admin</Link></td><td>관리 화면 (로그인 필요). 페이지 맨 아래 <b>관리</b> 링크로도 들어갈 수 있습니다</td></tr>
             </tbody>
           </table>
+        </section>
+
+        <section id="lang">
+          <h2>영어·한국어 페이지</h2>
+          <ul>
+            <li>사이트 기본 언어는 <b>영어</b>입니다. 도메인으로 들어오면 영어 페이지가 열립니다.</li>
+            <li>한국어 페이지는 주소 앞에 <code>/ko</code>가 붙습니다(예: <code>/ko/works</code>). 메뉴 오른쪽 <i>한국어</i> / <i>EN</i> 버튼으로 오갈 수 있습니다.</li>
+            <li>메뉴나 버튼 같은 사이트 글자는 자동으로 바뀝니다. <b>작품 제목·설명, 작가 소개, 전시명</b>은 관리 화면의 <i>영어 페이지</i> 칸에 직접 써야 합니다.</li>
+            <li>영어 칸을 비워 두면 영어 페이지에도 한국어 내용이 그대로 나옵니다. 우선 한국어로 올리고 영어는 나중에 채워도 됩니다.</li>
+            <li>관리 화면과 이 가이드는 한국어로만 보입니다.</li>
+          </ul>
+          <p className="guide-note">가격은 영어 칸을 따로 둘 수 있습니다(예: 한국어 <code>3,000,000원</code>, 영어 <code>KRW 3,000,000</code>). 크기(예: <code>120 × 80 cm</code>)와 연도는 두 언어에 같이 쓰입니다.</p>
         </section>
 
         <section id="start">
@@ -66,7 +80,7 @@ export function Guide() {
           <ol className="steps">
             <li><b>새 작품 만들기</b> — <i>작품</i> 탭 맨 위 <i>새 작품</i>에 제목만 넣고 <i>작품 만들기</i>를 누릅니다. 연도와 재료는 선택입니다. 만든 작품은 <b>비공개</b> 상태라 아직 사이트에 보이지 않습니다.</li>
             <li><b>사진·영상 올리기</b> — 만들면 바로 편집기가 열립니다. <i>사진·영상 올리기</i>로 파일을 고릅니다. 여러 장을 한 번에 골라도 됩니다.</li>
-            <li><b>정보 채우기</b> — 크기, 작품 설명, 시리즈, 판매 상태, 가격을 넣습니다.</li>
+            <li><b>정보 채우기</b> — 크기, 작품 설명, 시리즈, 판매 상태, 가격을 넣습니다. 아래 <i>영어 페이지</i> 칸에 영어 제목·설명도 넣을 수 있습니다.</li>
             <li><b>공개하기</b> — <i>사이트에 공개</i>를 체크하고 <i>저장</i>을 누르면 사이트에 나타납니다. 저장 옆의 <i>사이트에서 보기</i>로 바로 확인할 수 있습니다.</li>
           </ol>
 

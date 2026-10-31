@@ -19,6 +19,13 @@ class ProfileIn(BaseModel):
     bio: str = Field(default="", max_length=10000)
     cv: str = Field(default="", max_length=10000)
     location: str = Field(default="", max_length=120)
+    # 영어 페이지용 (비어 있으면 한국어 값을 대신 보여준다)
+    name_en: str = Field(default="", max_length=120)
+    headline_en: str = Field(default="", max_length=300)
+    intro_en: str = Field(default="", max_length=2000)
+    bio_en: str = Field(default="", max_length=10000)
+    cv_en: str = Field(default="", max_length=10000)
+    location_en: str = Field(default="", max_length=120)
 
 
 class ProfileOut(ProfileIn):
@@ -33,6 +40,10 @@ class ArtworkIn(BaseModel):
     dimensions: str = Field(default="", max_length=200)
     description: str = Field(default="", max_length=10000)
     price_text: str | None = Field(default=None, max_length=100)
+    title_en: str = Field(default="", max_length=300)
+    medium_en: str = Field(default="", max_length=300)
+    description_en: str = Field(default="", max_length=10000)
+    price_text_en: str | None = Field(default=None, max_length=100)
     show_price: bool = False
     sale_status: SaleStatus = SaleStatus.unavailable
     is_published: bool = False
@@ -109,6 +120,8 @@ class UploadCompleteOut(BaseModel):
 class SeriesIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=5000)
+    name_en: str = Field(default="", max_length=200)
+    description_en: str = Field(default="", max_length=5000)
     sort_order: int = Field(default=0, ge=0, le=100000)
 
 
@@ -125,6 +138,10 @@ class ExhibitionIn(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     description: str = Field(default="", max_length=10000)
+    title_en: str = Field(default="", max_length=300)
+    venue_en: str = Field(default="", max_length=300)
+    location_en: str = Field(default="", max_length=300)
+    description_en: str = Field(default="", max_length=10000)
     is_published: bool = False
     sort_order: int = Field(default=0, ge=0, le=100000)
 

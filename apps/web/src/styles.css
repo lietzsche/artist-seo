@@ -282,3 +282,16 @@ figcaption cite { font-style: normal; color: var(--ink); }
   .guide-table tbody tr { display: grid; }
   .guide-table tbody th { border-bottom: 0; padding-bottom: 0; }
 }
+
+/* 언어 전환 (EN / 한국어) */
+.lang-switch { padding-left: clamp(.75rem, 2vw, 1.5rem); border-left: 1px solid var(--line); color: var(--muted); }
+.lang-switch:hover { color: var(--ink); }
+
+/* 관리 화면의 영어 입력 묶음 (안쪽도 같은 12칸 격자) */
+.admin-form .lang-fields { grid-column: span 12; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem 1.25rem; align-items: end; margin: .25rem 0 0; padding: 1rem 1.1rem 1.2rem; border: 1px solid var(--line); background: var(--bg); min-width: 0; }
+.admin-form .lang-fields legend { padding: 0 .4rem; font-size: .82rem; font-weight: 600; }
+.admin-form .lang-fields legend span { font-weight: 400; color: var(--muted); margin-left: .4rem; }
+@media (max-width: 760px) {
+  .admin-form .lang-fields { grid-template-columns: 1fr; }
+  .admin-form .lang-fields > * { grid-column: 1 / -1; }
+}

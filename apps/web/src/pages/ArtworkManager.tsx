@@ -102,6 +102,8 @@ function ArtworkEditor({ work, series, csrf, onChanged, onClose }: { work: Artwo
       price_text: String(form.get("price_text") || "").trim() || null, show_price: form.get("show_price") === "on",
       sale_status: form.get("sale_status"), is_published: form.get("is_published") === "on",
       featured: form.get("featured") === "on", series_id: form.get("series_id") || null,
+      title_en: String(form.get("title_en") || "").trim(), medium_en: String(form.get("medium_en") || "").trim(),
+      description_en: String(form.get("description_en") || ""), price_text_en: String(form.get("price_text_en") || "").trim() || null,
     };
     try {
       await api(`/artworks/admin/${work.id}`, { method: "PUT", headers: json(csrf), body: JSON.stringify(body) });
@@ -149,6 +151,13 @@ function ArtworkEditor({ work, series, csrf, onChanged, onClose }: { work: Artwo
       <label className="c12">작품 설명<textarea name="description" rows={4} maxLength={10000} defaultValue={work.description} /></label>
       <label className="c3">판매 상태<select name="sale_status" defaultValue={work.sale_status}><option value="available">판매 가능</option><option value="sold">판매 완료</option><option value="unavailable">비매품</option></select></label>
       <label className="c3">가격<input name="price_text" maxLength={100} defaultValue={work.price_text ?? ""} placeholder="예: 3,000,000원" /></label>
+      <fieldset className="lang-fields c12">
+        <legend>영어 페이지 <span>기본 사이트는 영어입니다. 비워 두면 영어 페이지에도 한국어 내용이 나옵니다.</span></legend>
+        <label className="c6">영어 제목<input name="title_en" maxLength={300} defaultValue={work.title_en} placeholder="e.g. Morning Light" /></label>
+        <label className="c3">영어 재료<input name="medium_en" maxLength={300} defaultValue={work.medium_en} placeholder="e.g. Oil on canvas" /></label>
+        <label className="c3">영어 가격<input name="price_text_en" maxLength={100} defaultValue={work.price_text_en ?? ""} placeholder="e.g. KRW 3,000,000" /></label>
+        <label className="c12">영어 작품 설명<textarea name="description_en" rows={4} maxLength={10000} defaultValue={work.description_en} /></label>
+      </fieldset>
       <div className="checks">
         <label className="check"><input type="checkbox" name="show_price" defaultChecked={work.show_price} /> 가격 공개 (끄면 '문의'로 표시)</label>
         <label className="check"><input type="checkbox" name="featured" defaultChecked={work.featured} /> 대표 작품 (홈에 표시)</label>

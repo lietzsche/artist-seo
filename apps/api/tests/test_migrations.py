@@ -74,7 +74,7 @@ def empty_database():
 
 @needs_postgres
 def test_apply_once_and_record(empty_database):
-    assert migrate.migrate(empty_database) == ["01_init.sql"]
+    assert migrate.migrate(empty_database) == [m.path.name for m in migrate.discover()]
     assert migrate.migrate(empty_database) == []
     with empty_database.connect() as conn:
         tables = set(conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname='public'")).scalars())

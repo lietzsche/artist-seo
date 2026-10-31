@@ -68,6 +68,13 @@ class ArtistProfile(Base):
     bio: Mapped[str] = mapped_column(Text, default="")
     cv: Mapped[str] = mapped_column(Text, default="")
     location: Mapped[str] = mapped_column(String(120), default="")
+    # 영어 페이지용 (비어 있으면 위 한국어 값을 대신 보여준다)
+    name_en: Mapped[str] = mapped_column(String(120), default="")
+    headline_en: Mapped[str] = mapped_column(String(300), default="")
+    intro_en: Mapped[str] = mapped_column(Text, default="")
+    bio_en: Mapped[str] = mapped_column(Text, default="")
+    cv_en: Mapped[str] = mapped_column(Text, default="")
+    location_en: Mapped[str] = mapped_column(String(120), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
@@ -85,6 +92,8 @@ class Series(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
     name: Mapped[str] = mapped_column(String(200), unique=True)
     description: Mapped[str] = mapped_column(Text, default="")
+    name_en: Mapped[str] = mapped_column(String(200), default="")
+    description_en: Mapped[str] = mapped_column(Text, default="")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 
@@ -98,6 +107,10 @@ class Exhibition(Base):
     start_date: Mapped[date | None]
     end_date: Mapped[date | None]
     description: Mapped[str] = mapped_column(Text, default="")
+    title_en: Mapped[str] = mapped_column(String(300), default="")
+    venue_en: Mapped[str] = mapped_column(String(300), default="")
+    location_en: Mapped[str] = mapped_column(String(300), default="")
+    description_en: Mapped[str] = mapped_column(Text, default="")
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
@@ -114,6 +127,10 @@ class Artwork(Base):
     dimensions: Mapped[str] = mapped_column(String(200), default="")
     description: Mapped[str] = mapped_column(Text, default="")
     price_text: Mapped[str | None] = mapped_column(String(100))
+    title_en: Mapped[str] = mapped_column(String(300), default="")
+    medium_en: Mapped[str] = mapped_column(String(300), default="")
+    description_en: Mapped[str] = mapped_column(Text, default="")
+    price_text_en: Mapped[str | None] = mapped_column(String(100))
     show_price: Mapped[bool] = mapped_column(Boolean, default=False)
     sale_status: Mapped[SaleStatus] = mapped_column(Enum(SaleStatus), default=SaleStatus.unavailable)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
