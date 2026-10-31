@@ -286,3 +286,17 @@ def test_series_and_exhibition_update_and_delete(client):
     assert client.get("/api/v1/exhibitions").json() == []
     assert client.delete(f"/api/v1/exhibitions/admin/{exhibition['id']}", headers=headers).status_code == 204
     assert client.get("/api/v1/exhibitions/admin/all").json() == []
+
+
+def test_admin_reads_and_marks_inquiries(client):
+    csrf = client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"very-safe-password"}).json()["csrf_token"]
+    headers = {"X-CSRF-Token": csrf}
+    work = client.post("/api/v1/artworks/admin", json={"slug":"hybrid", "title":"혼종", "is_published":True}, headers=headers).json()
+    assert client.post("/api/v1/inquiries", json={"artwork_id":work["id"], "name":"Buyer", "email":"buyer@example.com", "message":"Is this still available?", "consent":True}).status_code == 201
+    items = client.get("/api/v1/inquiries/admin").json()
+    assert (items[0]["artwork_title"], items[0]["artwork_slug"], items[0]["status"]) == ("혼종", "hybrid", "new")
+    assert client.get("/api/v1/admin/overview").json()["new_inquiries"] == 1
+    assert client.patch(f"/api/v1/inquiries/admin/{items[0]['id']}", json={"status":"done"}).status_code == 403
+    assert client.patch(f"/api/v1/inquiries/admin/{items[0]['id']}", json={"status":"done"}, headers=headers).json()["status"] == "done"
+    assert client.get("/api/v1/admin/overview").json()["new_inquiries"] == 0
+    assert client.patch(f"/api/v1/inquiries/admin/{items[0]['id']}", json={"status":"spam"}, headers=headers).status_code == 422

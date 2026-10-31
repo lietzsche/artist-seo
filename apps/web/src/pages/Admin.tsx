@@ -5,11 +5,12 @@ import { api, AUTH_EXPIRED_EVENT } from "../lib/api";
 import { ArtworkManager } from "./ArtworkManager";
 import { CollectionManager } from "./CollectionManager";
 import { ProfileManager } from "./ProfileManager";
+import { InquiryManager, inquiriesQuery } from "./InquiryManager";
 
 type Me = { email: string; csrf_token: string };
 type Overview = { storage: { stored_bytes: number; reserved_bytes: number; max_total_bytes: number; disk_free_bytes: number; min_free_bytes: number; max_file_bytes: number }; new_inquiries: number; failed_jobs: { id: string; media_id: string; kind: string; attempts: number; max_attempts: number; error: string | null }[] };
 const bytes = (value: number) => value >= 1024 ** 3 ? `${(value / 1024 ** 3).toFixed(1)} GiB` : value >= 1024 ** 2 ? `${(value / 1024 ** 2).toFixed(1)} MiB` : `${value} B`;
-const TABS = [["works", "작품"], ["profile", "작가 프로필"], ["collections", "시리즈·전시"], ["status", "서버 현황"]] as const;
+const TABS = [["works", "작품"], ["inquiries", "문의"], ["profile", "작가 프로필"], ["collections", "시리즈·전시"], ["status", "서버 현황"]] as const;
 type Tab = typeof TABS[number][0];
 
 export function Admin() {
@@ -18,6 +19,8 @@ export function Admin() {
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/auth/me"), retry: false });
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("works");
+  // 탭에 새 문의 수를 보여주려고 로그인한 뒤 문의 목록을 미리 불러온다
+  const inquiries = useQuery({ ...inquiriesQuery, enabled: !!me.data, refetchInterval: 60_000 });
   const navigate = useNavigate();
   const [params] = useSearchParams();
   // /guide처럼 로그인이 필요해 넘어온 경우, 로그인 후 원래 페이지로 돌려보낸다 (사이트 안 경로만 허용)
@@ -93,6 +96,7 @@ export function Admin() {
   </section>;
 
   const csrf = me.data.csrf_token;
+  const newInquiries = (inquiries.data ?? []).filter(i => i.status === "new").length;
   return <section className="container admin">
     <div className="admin-top">
       <div><p className="eyebrow">Admin</p><h1>사이트 관리</h1></div>
@@ -103,9 +107,10 @@ export function Admin() {
       </div>
     </div>
     <div className="tabs" role="tablist">
-      {TABS.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}
+      {TABS.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}{id === "inquiries" && newInquiries > 0 && <span className="tab-count">{newInquiries}</span>}</button>)}
     </div>
     {tab === "works" && <ArtworkManager csrf={csrf} />}
+    {tab === "inquiries" && <InquiryManager csrf={csrf} />}
     {tab === "profile" && <ProfileManager csrf={csrf} />}
     {tab === "collections" && <CollectionManager csrf={csrf} />}
     {tab === "status" && <ServerStatus csrf={csrf} />}

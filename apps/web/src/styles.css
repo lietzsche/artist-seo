@@ -347,3 +347,19 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
   .edit-head small { grid-column: 1; grid-row: 2; }
   .edit-head .btn { grid-column: 2; grid-row: 1 / 3; }
 }
+
+/* 관리 화면: 문의 목록 */
+.tab-count { margin-left: .4rem; display: inline-grid; place-items: center; min-width: 1.3rem; height: 1.3rem; padding: 0 .35rem; border-radius: 99px; background: var(--accent); color: var(--bg); font-size: .7rem; font-weight: 600; }
+.inquiry-list { list-style: none; margin: .5rem 0 0; padding: 0; }
+.inquiry { padding: 1.25rem 0; border-top: 1px solid var(--line); display: grid; gap: .75rem; }
+.inquiry:last-child { border-bottom: 1px solid var(--line); }
+.inquiry.is-new { border-left: 2px solid var(--accent); padding-left: 1rem; }
+.inquiry-head { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; font-size: .9rem; }
+.inquiry-head a:hover { color: var(--accent); }
+.inquiry-head time { font-size: .8rem; margin-left: auto; }
+.inquiry-work { margin: 0; font-size: .85rem; color: var(--muted); }
+.inquiry-work a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.inquiry-message { margin: 0; white-space: pre-line; color: var(--text-2); line-height: 1.75; overflow-wrap: anywhere; }
+.inquiry .actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.inquiry .actions .spacer { flex: 1; }
+@media (max-width: 760px) { .inquiry-head time { margin-left: 0; width: 100%; } }

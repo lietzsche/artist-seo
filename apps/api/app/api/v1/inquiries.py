@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.api.deps import require_admin, require_csrf
-from app.api.v1.schemas import InquiryIn, InquiryOut
+from app.api.v1.schemas import InquiryIn, InquiryOut, InquiryStatusIn
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import Artwork, Inquiry
@@ -34,9 +34,28 @@ def create_inquiry(payload: InquiryIn, request: Request, db: Session = Depends(g
     return {"id": inquiry.id, "message": "문의가 접수되었습니다"}
 
 
+def _with_artwork(inquiry: Inquiry, db: Session) -> InquiryOut:
+    out = InquiryOut.model_validate(inquiry)
+    if inquiry.artwork_id and (artwork := db.get(Artwork, inquiry.artwork_id)):
+        out.artwork_title, out.artwork_slug = artwork.title, artwork.slug
+    return out
+
+
 @router.get("/admin", response_model=list[InquiryOut], dependencies=[Depends(require_admin)])
-def list_inquiries(db: Session = Depends(get_db)) -> list[Inquiry]:
-    return list(db.scalars(select(Inquiry).where(Inquiry.deleted_at.is_(None)).order_by(Inquiry.created_at.desc())).all())
+def list_inquiries(db: Session = Depends(get_db)) -> list[InquiryOut]:
+    rows = db.scalars(select(Inquiry).where(Inquiry.deleted_at.is_(None)).order_by(Inquiry.created_at.desc())).all()
+    return [_with_artwork(row, db) for row in rows]
+
+
+@router.patch("/admin/{inquiry_id}", response_model=InquiryOut)
+def update_inquiry_status(inquiry_id: str, payload: InquiryStatusIn, _: object = Depends(require_csrf), db: Session = Depends(get_db)) -> InquiryOut:
+    """관리 화면에서 '처리 완료' / '새 문의'로 표시한다. 서버 현황의 새 문의 수는 new만 센다."""
+    inquiry = db.get(Inquiry, inquiry_id)
+    if not inquiry or inquiry.deleted_at:
+        raise HTTPException(status_code=404, detail="문의를 찾을 수 없습니다")
+    inquiry.status = payload.status
+    db.commit()
+    return _with_artwork(inquiry, db)
 
 
 @router.delete("/admin/{inquiry_id}", status_code=204)

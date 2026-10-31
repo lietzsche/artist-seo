@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 from app.models.entities import SaleStatus
 
@@ -98,6 +99,13 @@ class InquiryOut(BaseModel):
     message: str
     status: str
     created_at: datetime
+    # 어떤 작품에 대한 문의인지 (작품 없이 보낸 문의, 삭제된 작품이면 비어 있음)
+    artwork_title: str | None = None
+    artwork_slug: str | None = None
+
+
+class InquiryStatusIn(BaseModel):
+    status: Literal["new", "done"]
 
 
 class UploadInit(BaseModel):
