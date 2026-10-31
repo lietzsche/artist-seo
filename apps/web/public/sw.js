@@ -1,5 +1,5 @@
 // 앱 설치용 서비스 워커. 페이지는 저장하지 않고(항상 최신 내용), 인터넷이 끊겼을 때만 안내 페이지를 보여준다.
-const CACHE = "offline-v1";
+const CACHE = "offline-v2";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", event => {

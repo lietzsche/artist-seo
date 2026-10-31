@@ -40,6 +40,8 @@ export function Layout() {
 
   useEffect(() => { document.title = `${name} — ${t.siteTitle}`; }, [name, t.siteTitle]);
   useEffect(() => { document.documentElement.lang = koreanOnly ? "ko" : lang; }, [lang, koreanOnly]);
+  // 관리 화면·가이드에서는 배경 그림을 숨겨 글을 읽기 쉽게 한다 (styles.css의 html[data-area])
+  useEffect(() => { document.documentElement.dataset.area = koreanOnly ? "admin" : "site"; }, [koreanOnly]);
   useAlternateLinks(location.pathname, !koreanOnly);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);

@@ -39,7 +39,6 @@ def web_manifest(db: Session = Depends(get_db)) -> JSONResponse:
         {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
         # 아이콘 내용이 가운데 안전 영역 안에 있어 휴대폰이 둥글게·원형으로 잘라도 괜찮다
         {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
-        {"src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
     ]
     body = {
         "id": "/", "name": f"{name} — Works", "short_name": name[:12], "description": f"Works and exhibitions by {name}.",

@@ -25,7 +25,6 @@
   --max: 1440px;
   --ease: cubic-bezier(.2, .7, .2, 1);
   color: var(--ink);
-  background: var(--bg);
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   font-size: 15px;
   line-height: 1.65;
@@ -36,8 +35,9 @@
 }
 * { box-sizing: border-box; }
 /* 배경: 제도용 격자(160px) + 교차점의 + 표시 + 아주 옅은 인쇄 질감. 스크롤해도 고정 */
-body {
-  margin: 0; min-width: 320px; background-color: var(--bg);
+/* 격자는 html에 깔아야 body::after(배경 그림)가 격자 위·본문 아래에 놓인다 */
+html {
+  background-color: var(--bg);
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cpath d='M73 80.5h15M80.5 73v15' stroke='%23e3dacb' stroke-opacity='.15'/%3E%3C/svg%3E"),
     linear-gradient(var(--grid) 1px, transparent 1px),
@@ -46,6 +46,7 @@ body {
   background-position: -80px -80px, 0 0, 0 0; /* + 표시를 격자 교차점에 맞춘다 */
   background-attachment: fixed;
 }
+body { margin: 0; min-width: 320px; background: transparent; }
 body::before {
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: .07; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -420,3 +421,18 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
 .install-btn:hover { border-color: var(--accent); }
 .install-tip { flex-basis: 100%; margin: 0; text-align: right; color: var(--text-2); }
 @media (max-width: 760px) { .install-tip { text-align: left; } }
+
+/* 배경 그림(theme.jpg의 판): 화면 오른쪽에 고정해 아주 옅게 깔고, 왼쪽으로 갈수록 사라지게 해 본문을 가리지 않는다 */
+body::after {
+  content: ""; position: fixed; z-index: -1; pointer-events: none;
+  top: 0; right: 0; width: min(58vw, 880px); height: 100vh;
+  background: url("/theme/plate.jpg") right center / cover no-repeat;
+  background-image: image-set(url("/theme/plate.webp") type("image/webp"), url("/theme/plate.jpg") type("image/jpeg"));
+  opacity: .2;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 55%); mask-image: linear-gradient(to right, transparent, #000 55%);
+}
+html[data-area="admin"] body::after { display: none; }
+@media (max-width: 760px) {
+  body::after { width: 100vw; opacity: .12; background-position: center top;
+    -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 85%); mask-image: linear-gradient(to bottom, #000 30%, transparent 85%); }
+}
