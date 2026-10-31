@@ -355,7 +355,7 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
 .inquiry:last-child { border-bottom: 1px solid var(--line); }
 .inquiry.is-new { border-left: 2px solid var(--accent); padding-left: 1rem; }
 .inquiry-head { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; font-size: .9rem; }
-.inquiry-head a:hover { color: var(--accent); }
+.inquiry-email { display: inline-flex; gap: .5rem; align-items: center; }
 .inquiry-head time { font-size: .8rem; margin-left: auto; }
 .inquiry-work { margin: 0; font-size: .85rem; color: var(--muted); }
 .inquiry-work a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }

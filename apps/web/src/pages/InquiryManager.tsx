@@ -16,6 +16,11 @@ export function InquiryManager({ csrf }: { csrf: string }) {
   const inquiries = useQuery({ ...inquiriesQuery, refetchInterval: 60_000 });
   const [onlyNew, setOnlyNew] = useState(false);
   const [error, setError] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  async function copyEmail(item: Inquiry) {
+    try { await navigator.clipboard.writeText(item.email); setCopiedId(item.id); setTimeout(() => setCopiedId(null), 2000); }
+    catch { /* 복사가 막힌 브라우저에서는 직접 선택해 복사한다 */ }
+  }
 
   const refresh = async () => {
     await client.invalidateQueries({ queryKey: ["admin-inquiries"] });
@@ -37,32 +42,30 @@ export function InquiryManager({ csrf }: { csrf: string }) {
 
   return <section className="panel">
     <h2>문의</h2>
-    <p className="hint">문의 페이지와 작품의 ‘문의하기’로 들어온 내용입니다. <b>답장하기</b>를 누르면 메일 앱이 열립니다. 답장한 뒤 <b>처리 완료</b>로 표시해 두세요.</p>
+    <p className="hint">문의 페이지와 작품의 ‘문의하기’로 들어온 내용입니다. 답변은 보낸 사람의 이메일로 직접 보내고, 읽은 문의는 <b>확인함</b>으로 표시해 두세요.</p>
     <div className="chips" role="group" aria-label="보기" style={{ margin: "1rem 0 .5rem" }}>
       <button type="button" className="chip" aria-pressed={!onlyNew} onClick={() => setOnlyNew(false)}>전체 {all.length}</button>
-      <button type="button" className="chip" aria-pressed={onlyNew} onClick={() => setOnlyNew(true)}>새 문의 {newCount}</button>
+      <button type="button" className="chip" aria-pressed={onlyNew} onClick={() => setOnlyNew(true)}>미확인 {newCount}</button>
     </div>
     {error && <p className="notice error" role="alert">{error}</p>}
     {inquiries.isPending && <p className="muted">불러오는 중입니다.</p>}
-    {inquiries.isSuccess && list.length === 0 && <p className="muted">{onlyNew ? "새 문의가 없습니다." : "아직 들어온 문의가 없습니다."}</p>}
+    {inquiries.isSuccess && list.length === 0 && <p className="muted">{onlyNew ? "확인하지 않은 문의가 없습니다." : "아직 들어온 문의가 없습니다."}</p>}
     <ul className="inquiry-list">
       {list.map(item => {
-        const subject = encodeURIComponent(item.artwork_title ? `Re: ${item.artwork_title}` : "Re: 문의");
         return <li key={item.id} className={`inquiry${item.status === "new" ? " is-new" : ""}`}>
           <div className="inquiry-head">
-            <span className={`badge${item.status === "new" ? " warn" : " on"}`}>{item.status === "new" ? "새 문의" : "처리 완료"}</span>
+            <span className={`badge${item.status === "new" ? " warn" : " on"}`}>{item.status === "new" ? "미확인" : "확인함"}</span>
             <strong>{item.name}</strong>
-            <a href={`mailto:${item.email}`} className="muted">{item.email}</a>
+            <span className="inquiry-email"><span className="muted">{item.email}</span><button type="button" className="link-btn" onClick={() => void copyEmail(item)}>{copiedId === item.id ? "복사됨" : "복사"}</button></span>
             <time className="muted" dateTime={item.created_at}>{when(item.created_at)}</time>
           </div>
           {item.artwork_title && <p className="inquiry-work">작품: <a href={`/works/${item.artwork_slug}`} target="_blank" rel="noopener">{item.artwork_title} ↗</a></p>}
           {item.artwork_id && !item.artwork_title && <p className="inquiry-work muted">작품: 삭제된 작품</p>}
           <p className="inquiry-message">{item.message}</p>
           <div className="actions">
-            <a className="btn btn-sm" href={`mailto:${item.email}?subject=${subject}`}>답장하기</a>
             {item.status === "new"
-              ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => void mark(item, "done")}>처리 완료</button>
-              : <button type="button" className="btn btn-ghost btn-sm" onClick={() => void mark(item, "new")}>새 문의로 되돌리기</button>}
+              ? <button type="button" className="btn btn-sm" onClick={() => void mark(item, "done")}>확인함으로 표시</button>
+              : <button type="button" className="btn btn-ghost btn-sm" onClick={() => void mark(item, "new")}>미확인으로 되돌리기</button>}
             <span className="spacer" />
             <button type="button" className="link-btn" onClick={() => void remove(item)}>삭제</button>
           </div>

@@ -131,7 +131,7 @@ function ServerStatus({ csrf }: { csrf: string }) {
       <div><strong>{bytes(o.storage.stored_bytes)}</strong><span>저장된 원본 / 한도 {bytes(o.storage.max_total_bytes)}</span></div>
       <div><strong>{bytes(o.storage.reserved_bytes)}</strong><span>진행 중 업로드 예약량</span></div>
       <div><strong>{bytes(o.storage.disk_free_bytes)}</strong><span>디스크 잔여 공간</span></div>
-      <div><strong>{o.new_inquiries}</strong><span>새 구매 문의</span></div>
+      <div><strong>{o.new_inquiries}</strong><span>확인하지 않은 문의</span></div>
     </div>
     <section className="panel" style={{ marginTop: "1.25rem" }}>
       <h2>최근 실패한 변환 작업</h2>
