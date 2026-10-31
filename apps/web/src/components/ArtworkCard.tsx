@@ -12,10 +12,9 @@ export function ArtworkCard({ work }: { work: Artwork }) {
         {cover
           ? <img src={cover.src} alt={w.title} width={cover.width} height={cover.height} loading="lazy" />
           : <div className="placeholder" aria-hidden="true">{t.imagePending}</div>}
-        {cover?.isVideo && <span className="play-badge">{t.video}</span>}
       </div>
       <div className="caption">
-        <span className="t">{w.title}</span>
+        <span className="t">{w.title}{cover?.isVideo && <span className="video-tag">{t.video}</span>}</span>
         <span className="m">{caption(work, w.medium) || " "}</span>
         {work.sale_status === "sold" && <span className="sale"><span className="dot" aria-hidden="true" />{t.sale.sold}</span>}
       </div>

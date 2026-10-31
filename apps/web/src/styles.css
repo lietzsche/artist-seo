@@ -307,3 +307,14 @@ figcaption cite { font-style: normal; color: var(--ink); }
 .payment dd { margin: 0; display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
 .payment .account { font-variant-numeric: tabular-nums; letter-spacing: .02em; font-weight: 500; }
 .payment p { margin: 0; font-size: .85rem; color: var(--muted); line-height: 1.7; }
+
+/* 작품 카드 캡션의 영상 표시 */
+.video-tag { margin-left: .5rem; font-size: .66rem; letter-spacing: .1em; padding: .05rem .4rem; border: 1px solid var(--line); color: var(--muted); vertical-align: .1em; }
+
+/* 브라우저마다 모양이 달라지는 기본 선택 상자 대신 같은 모양으로 그린다 */
+.select-inline select { -webkit-appearance: none; appearance: none; border-radius: 0; min-width: 6.5rem; line-height: 1.4;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23141413' stroke-width='1.2'/%3E%3C/svg%3E") no-repeat right .2rem center / 10px 6px; }
+@media (max-width: 760px) {
+  /* iOS는 16px보다 작은 입력칸을 누르면 화면을 확대한다 */
+  .select-inline select { font-size: 16px; }
+}
