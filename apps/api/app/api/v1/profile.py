@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.api.deps import require_csrf
@@ -31,7 +31,7 @@ THEME_COLOR = "#0b0a08"
 
 
 @manifest_router.get("/manifest.webmanifest")
-def web_manifest(db: Session = Depends(get_db)) -> JSONResponse:
+def web_manifest(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
     profile = db.get(ArtistProfile, 1)
     name = ((profile.name_en or profile.name) if profile else "").strip() or "Artist Portfolio"
     icons = [
@@ -40,9 +40,11 @@ def web_manifest(db: Session = Depends(get_db)) -> JSONResponse:
         # 아이콘 내용이 가운데 안전 영역 안에 있어 휴대폰이 둥글게·원형으로 잘라도 괜찮다
         {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
     ]
+    # 설치한 앱은 휴대폰 언어로 연다: 한국어 기기면 /ko, 아니면 영어(/). 웹사이트 기본 언어(영어)는 그대로다.
+    korean = request.headers.get("accept-language", "").strip().lower().startswith("ko")
     body = {
         "id": "/", "name": f"{name} — Works", "short_name": name[:12], "description": f"Works and exhibitions by {name}.",
-        "start_url": "/", "scope": "/", "display": "standalone", "lang": "en",
+        "start_url": "/ko" if korean else "/", "scope": "/", "display": "standalone", "lang": "ko" if korean else "en",
         "background_color": THEME_COLOR, "theme_color": THEME_COLOR, "icons": icons,
     }
-    return JSONResponse(body, media_type="application/manifest+json", headers={"Cache-Control": "no-cache"})
+    return JSONResponse(body, media_type="application/manifest+json", headers={"Cache-Control": "no-cache", "Vary": "Accept-Language"})

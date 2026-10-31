@@ -315,3 +315,9 @@ def test_web_manifest_uses_artist_name(client):
     manifest = client.get("/api/v1/manifest.webmanifest").json()
     assert (manifest["name"], manifest["short_name"], manifest["display"]) == ("Noah — Works", "Noah", "standalone")
     assert {icon["sizes"] for icon in manifest["icons"]} >= {"192x192", "512x512"}
+
+
+def test_web_manifest_opens_in_device_language(client):
+    assert client.get("/api/v1/manifest.webmanifest", headers={"Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8"}).json()["start_url"] == "/ko"
+    assert client.get("/api/v1/manifest.webmanifest", headers={"Accept-Language": "en-US,en;q=0.9"}).json()["start_url"] == "/"
+    assert client.get("/api/v1/manifest.webmanifest").json()["start_url"] == "/"
