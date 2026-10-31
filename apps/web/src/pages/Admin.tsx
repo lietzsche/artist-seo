@@ -133,7 +133,7 @@ function ServerStatus({ csrf }: { csrf: string }) {
       <p className="hint">사진·영상 변환이 실패하면 여기에 나타납니다. 원인을 확인한 뒤 다시 시도할 수 있습니다.</p>
       {o.failed_jobs.length === 0 ? <p className="muted" style={{ margin: 0 }}>실패한 작업이 없습니다.</p> :
         <ul className="rows failed-jobs">{o.failed_jobs.map(job => <li key={job.id} className="row">
-          <div><div className="name">{job.kind} · {job.attempts}/{job.max_attempts}회 시도</div><div className="sub" style={{ color: "#8b241c" }}>{job.error}</div></div>
+          <div><div className="name">{job.kind} · {job.attempts}/{job.max_attempts}회 시도</div><div className="sub" style={{ color: "var(--bad)" }}>{job.error}</div></div>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => void retry(job.id)}>재시도</button>
         </li>)}</ul>}
     </section>
