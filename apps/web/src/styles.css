@@ -428,11 +428,11 @@ body::after {
   top: 0; right: 0; width: min(58vw, 880px); height: 100vh;
   background: url("/theme/plate.jpg") right center / cover no-repeat;
   background-image: image-set(url("/theme/plate.webp") type("image/webp"), url("/theme/plate.jpg") type("image/jpeg"));
-  opacity: .2;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 55%); mask-image: linear-gradient(to right, transparent, #000 55%);
+  opacity: .32;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 45%); mask-image: linear-gradient(to right, transparent, #000 45%);
 }
 html[data-area="admin"] body::after { display: none; }
 @media (max-width: 760px) {
-  body::after { width: 100vw; opacity: .12; background-position: center top;
+  body::after { width: 100vw; opacity: .2; background-position: center top;
     -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 85%); mask-image: linear-gradient(to bottom, #000 30%, transparent 85%); }
 }

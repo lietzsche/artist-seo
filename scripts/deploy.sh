@@ -19,6 +19,13 @@ for arg in "$@"; do
 done
 
 fail() { echo "오류: $*" >&2; exit 1; }
+
+# 배포가 동시에 두 번 돌면 컨테이너 교체가 충돌해 사이트가 잠시 내려간다. 앞 배포가 끝날 때까지 기다린다.
+exec 9>"${TMPDIR:-/tmp}/artist-portfolio-deploy.lock"
+if ! flock -n 9; then
+  echo "다른 배포가 진행 중입니다. 끝날 때까지 기다립니다..."
+  flock 9
+fi
 env_value() { grep -E "^$1=" .env | tail -n1 | cut -d= -f2- || true; }
 
 # 1. 설정 점검
