@@ -1,5 +1,7 @@
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Link, Navigate } from "react-router-dom";
+import { api } from "../lib/api";
 
 // 작가(사이트 관리자)를 위한 사용 설명서. 실제 관리자 화면의 메뉴 이름과 맞춰 적는다.
 const SECTIONS = [
@@ -15,7 +17,11 @@ const SECTIONS = [
 ] as const;
 
 export function Guide() {
+  // 관리자 전용: 로그인하지 않았으면 로그인 화면으로 보내고, 로그인 후 다시 이 페이지로 돌아온다
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api<{ email: string }>("/auth/me"), retry: false });
   useEffect(() => { document.title = "사용 가이드"; }, []);
+  if (me.isPending) return <p className="container state" role="status">관리자 상태를 확인하는 중입니다.</p>;
+  if (me.isError) return <Navigate to="/admin?next=/guide" replace />;
   return <section className="container guide">
     <header className="guide-head">
       <p className="eyebrow">Guide</p>

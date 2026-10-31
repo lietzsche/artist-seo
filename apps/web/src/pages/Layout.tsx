@@ -19,7 +19,7 @@ export function Layout() {
   }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
 
-  if (setup.data?.needs_setup && !["/admin", "/guide"].includes(location.pathname)) return <Navigate to="/admin" replace />;
+  if (setup.data?.needs_setup && location.pathname !== "/admin") return <Navigate to="/admin" replace />;
   return <>
     <a className="skip" href="#content">본문으로 건너뛰기</a>
     <header className={`site-header${scrolled ? " scrolled" : ""}`}>
@@ -36,7 +36,7 @@ export function Layout() {
     <footer className="site-footer">
       <div className="container">
         <span>© {new Date().getFullYear()} {name}{profile.data?.location ? ` · ${profile.data.location}` : ""}</span>
-        <nav aria-label="하단 메뉴"><Link to="/works">작품</Link><Link to="/about">소개</Link><Link to="/contact">문의</Link><Link to="/guide">가이드</Link><Link to="/admin">관리</Link></nav>
+        <nav aria-label="하단 메뉴"><Link to="/works">작품</Link><Link to="/about">소개</Link><Link to="/contact">문의</Link><Link to="/admin">관리</Link></nav>
       </div>
     </footer>
   </>;

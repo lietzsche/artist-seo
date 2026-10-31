@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, AUTH_EXPIRED_EVENT } from "../lib/api";
 import { ArtworkManager } from "./ArtworkManager";
 import { CollectionManager } from "./CollectionManager";
@@ -18,6 +18,11 @@ export function Admin() {
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/auth/me"), retry: false });
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("works");
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // /guide처럼 로그인이 필요해 넘어온 경우, 로그인 후 원래 페이지로 돌려보낸다 (사이트 안 경로만 허용)
+  const next = params.get("next");
+  const returnTo = next && /^\/[a-z]/.test(next) ? next : null;
 
   // 작업 중 세션이 만료되면 로그인 상태를 다시 확인해 로그인 화면으로 돌아간다
   useEffect(() => {
@@ -36,6 +41,7 @@ export function Admin() {
       await api("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: form.get("email"), password: form.get("password") }) });
       setError("");
       await client.invalidateQueries({ queryKey: ["me"] });
+      if (returnTo) navigate(returnTo, { replace: true });
     } catch (e) { setError(e instanceof Error ? e.message : "로그인 실패"); }
   }
 
