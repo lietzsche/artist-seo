@@ -21,7 +21,8 @@ services:
     build:
       context: ./apps/web
     ports:
-      - "8080:8080"
+      # 운영에서는 GATEWAY_BIND=127.0.0.1로 두면 외부(LAN)에서 8080 직접 접속을 막고 터널로만 공개한다
+      - "${GATEWAY_BIND:-0.0.0.0}:8080:8080"
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - artist_public:/data/public:ro

@@ -14,3 +14,4 @@ storage/*
 !storage/public/.gitkeep
 !storage/tmp/.gitkeep
 
+backups/

@@ -65,6 +65,8 @@ DB 비밀번호는 DB 볼륨이 처음 만들어질 때 정해집니다. 이미 
 
 Cloudflare Tunnel은 `.env`에 `CLOUDFLARE_TUNNEL_TOKEN`을 넣고 `docker compose --profile tunnel up -d`로 실행합니다. 토큰은 cloudflared 컨테이너에만 전달됩니다.
 
+Cloudflare 도메인으로 공개하는 전체 절차(터널 생성, `scripts/setup-env.sh`, `scripts/deploy.sh`)는 [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md)를 참고하세요.
+
 ### 3. 데모 데이터 (seed)
 
 기능별로 확인할 수 있는 데모 데이터를 넣을 수 있습니다. 관리자 계정은 만들지 않으므로 첫 설정 화면도 그대로 시험할 수 있습니다. 슬러그가 모두 `demo-`로 시작하고, 이미 있는 항목은 건너뛰므로 여러 번 실행해도 됩니다.
