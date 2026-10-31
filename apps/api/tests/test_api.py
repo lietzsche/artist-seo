@@ -265,3 +265,24 @@ def test_public_years_lists_published_years_only(client):
         client.post("/api/v1/artworks/admin", json={"slug":f"work-{slug}", "title":slug, "year":year, "is_published":published}, headers=headers)
     assert client.get("/api/v1/artworks/years").json() == [2024, 2021]
     assert client.get("/api/v1/artworks?year=2024").json()["total"] == 2
+
+
+def test_series_and_exhibition_update_and_delete(client):
+    csrf = client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"very-safe-password"}).json()["csrf_token"]
+    headers = {"X-CSRF-Token": csrf}
+    series = client.post("/api/v1/series/admin", json={"name":"테스트"}, headers=headers).json()
+    updated = client.put(f"/api/v1/series/admin/{series['id']}", json={"name":"혼종", "name_en":"Hybrid", "sort_order":2}, headers=headers).json()
+    assert (updated["name"], updated["name_en"], updated["sort_order"]) == ("혼종", "Hybrid", 2)
+    # 작품에서 쓰는 동안은 지울 수 없고, 작품의 시리즈를 빼면 지울 수 있다
+    work = client.post("/api/v1/artworks/admin", json={"slug":"w1", "title":"작품", "series_id":series["id"]}, headers=headers).json()
+    assert client.delete(f"/api/v1/series/admin/{series['id']}", headers=headers).status_code == 409
+    client.put(f"/api/v1/artworks/admin/{work['id']}", json={"slug":"w1", "title":"작품", "series_id":None}, headers=headers)
+    assert client.delete(f"/api/v1/series/admin/{series['id']}", headers=headers).status_code == 204
+    assert client.get("/api/v1/series").json() == []
+
+    exhibition = client.post("/api/v1/exhibitions/admin", json={"slug":"solo", "title":"개인전", "is_published":True}, headers=headers).json()
+    changed = client.put(f"/api/v1/exhibitions/admin/{exhibition['id']}", json={"slug":"solo", "title":"개인전 2", "is_published":False}, headers=headers).json()
+    assert (changed["title"], changed["is_published"]) == ("개인전 2", False)
+    assert client.get("/api/v1/exhibitions").json() == []
+    assert client.delete(f"/api/v1/exhibitions/admin/{exhibition['id']}", headers=headers).status_code == 204
+    assert client.get("/api/v1/exhibitions/admin/all").json() == []
