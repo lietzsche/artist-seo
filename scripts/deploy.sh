@@ -60,6 +60,8 @@ if ! compose up -d --build --remove-orphans; then
   fi
   fail "컨테이너 시작 실패"
 fi
+# nginx.conf는 이미지가 아니라 파일 마운트라, 그 파일만 바뀌면 위 단계에서 컨테이너가 다시 뜨지 않는다
+compose restart gateway
 
 # 5. 상태 확인
 echo "==> 로컬 상태 확인 (http://127.0.0.1:8080)"
