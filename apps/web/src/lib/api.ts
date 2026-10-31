@@ -6,7 +6,7 @@ export type Artwork = { id: string; series_id: string | null; slug: string; titl
 export type Series = { id:string; name:string; description:string; name_en:string; description_en:string; sort_order:number };
 export type Exhibition = { id:string; slug:string; title:string; venue:string; location:string; start_date:string|null; end_date:string|null; description:string; title_en:string; venue_en:string; location_en:string; description_en:string; is_published:boolean; sort_order:number };
 
-export type Profile = { name:string; headline:string; intro:string; bio:string; cv:string; location:string; name_en:string; headline_en:string; intro_en:string; bio_en:string; cv_en:string; location_en:string };
+export type Profile = { name:string; headline:string; intro:string; bio:string; cv:string; location:string; name_en:string; headline_en:string; intro_en:string; bio_en:string; cv_en:string; location_en:string; bank_name:string; bank_account:string; bank_holder:string; payment_note:string; payment_note_en:string };
 export const FALLBACK_NAME = "작가 포트폴리오";
 
 export const SALE_LABEL: Record<Artwork["sale_status"], string> = { available: "판매 가능", sold: "판매 완료", unavailable: "비매품" };

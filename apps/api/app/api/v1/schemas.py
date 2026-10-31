@@ -26,6 +26,12 @@ class ProfileIn(BaseModel):
     bio_en: str = Field(default="", max_length=10000)
     cv_en: str = Field(default="", max_length=10000)
     location_en: str = Field(default="", max_length=120)
+    # 문의 페이지에 공개하는 입금 계좌
+    bank_name: str = Field(default="", max_length=100)
+    bank_account: str = Field(default="", max_length=100)
+    bank_holder: str = Field(default="", max_length=100)
+    payment_note: str = Field(default="", max_length=2000)
+    payment_note_en: str = Field(default="", max_length=2000)
 
 
 class ProfileOut(ProfileIn):

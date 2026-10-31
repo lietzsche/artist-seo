@@ -75,6 +75,12 @@ class ArtistProfile(Base):
     bio_en: Mapped[str] = mapped_column(Text, default="")
     cv_en: Mapped[str] = mapped_column(Text, default="")
     location_en: Mapped[str] = mapped_column(String(120), default="")
+    # 문의 페이지에 공개하는 입금 계좌 (계좌번호가 비어 있으면 표시하지 않는다)
+    bank_name: Mapped[str] = mapped_column(String(100), default="")
+    bank_account: Mapped[str] = mapped_column(String(100), default="")
+    bank_holder: Mapped[str] = mapped_column(String(100), default="")
+    payment_note: Mapped[str] = mapped_column(Text, default="")
+    payment_note_en: Mapped[str] = mapped_column(Text, default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 

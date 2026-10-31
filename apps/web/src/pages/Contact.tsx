@@ -1,10 +1,12 @@
 import { FormEvent, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, ApiError } from "../lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { api, ApiError, Profile } from "../lib/api";
 import { useLang } from "../lib/i18n";
 
 export function Contact() {
-  const { lang, t, to } = useLang();
+  const { lang, t, to, profile: localize } = useLang();
+  const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
   const [params] = useSearchParams();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -32,6 +34,7 @@ export function Contact() {
     <div style={{ display: "grid", gap: "1.5rem", alignContent: "start" }}>
       <h1 className="display">{t.contact}</h1>
       <p className="lead" style={{ margin: 0 }}>{t.contactLead}</p>
+      {profile.data?.bank_account && <Payment profile={profile.data} note={localize(profile.data).paymentNote} />}
       {artworkTitle && <p className="notice">{t.inquiryWork} <strong>{artworkTitle}</strong> · <Link to={to("/contact")} style={{ textDecoration: "underline" }}>{t.clearWork}</Link></p>}
     </div>
     <form className="form" onSubmit={submit}>
@@ -44,5 +47,28 @@ export function Contact() {
       {message && <p className="notice success" role="status">{message}</p>}
       {error && <p className="notice error" role="alert">{error}</p>}
     </form>
+  </section>;
+}
+
+/** 관리 화면에서 계좌번호를 넣었을 때만 보이는 입금 계좌 안내 */
+function Payment({ profile, note }: { profile: Profile; note: string }) {
+  const { t } = useLang();
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(profile.bank_account);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* 복사가 막힌 브라우저에서는 직접 선택해 복사한다 */ }
+  }
+  return <section className="payment" aria-labelledby="payment-title">
+    <h2 id="payment-title">{t.payment}</h2>
+    <dl>
+      {profile.bank_name && <><dt>{t.bank}</dt><dd>{profile.bank_name}</dd></>}
+      <dt>{t.account}</dt>
+      <dd><span className="account">{profile.bank_account}</span><button type="button" className="link-btn" onClick={() => void copy()}>{copied ? t.copied : t.copy}</button></dd>
+      {profile.bank_holder && <><dt>{t.holder}</dt><dd>{profile.bank_holder}</dd></>}
+    </dl>
+    <p>{note || t.paymentDefault}</p>
   </section>;
 }

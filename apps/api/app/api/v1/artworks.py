@@ -39,6 +39,15 @@ def public_list(
     return {"items": [ArtworkOut.model_validate(x) for x in items], "page": page, "size": size, "total": total}
 
 
+@router.get("/years")
+def public_years(db: Session = Depends(get_db)) -> list[int]:
+    """공개 작품이 있는 연도 목록 (최근 연도부터). 작품 페이지의 연도별 보기에 쓴다."""
+    rows = db.scalars(
+        select(Artwork.year).where(Artwork.is_published.is_(True), Artwork.deleted_at.is_(None), Artwork.year.is_not(None)).distinct().order_by(Artwork.year.desc())
+    ).all()
+    return list(rows)
+
+
 @router.get("/{slug}", response_model=ArtworkOut)
 def public_detail(slug: str, db: Session = Depends(get_db)) -> Artwork:
     artwork = db.scalar(select(Artwork).options(selectinload(Artwork.media)).where(Artwork.slug == slug, Artwork.is_published.is_(True), Artwork.deleted_at.is_(None)))

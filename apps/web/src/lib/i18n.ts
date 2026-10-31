@@ -21,6 +21,9 @@ const en = {
   consent: "I agree to the collection of my name and email to receive a reply.", website: "Website", send: "Send", sending: "Sending…",
   sent: "Thank you. Your message has been received and we will reply by email.", sendFailed: "Could not send your message. Please try again.",
   tooMany: "Too many messages. Please try again later.", language: "Language",
+  year: "Year", clearFilters: "Clear filters",
+  payment: "Bank transfer", bank: "Bank", account: "Account no.", holder: "Account holder", copy: "Copy", copied: "Copied",
+  paymentDefault: "Please make a transfer only after your purchase has been confirmed with the artist.",
 };
 type Dict = typeof en;
 
@@ -41,6 +44,9 @@ const ko: Dict = {
   consent: "문의 답변을 위한 개인정보(이름, 이메일) 수집에 동의합니다.", website: "웹사이트", send: "문의 보내기", sending: "보내는 중…",
   sent: "문의가 접수되었습니다. 확인 후 회신 이메일로 답변드리겠습니다.", sendFailed: "문의 접수에 실패했습니다.",
   tooMany: "잠시 후 다시 문의해 주세요.", language: "언어",
+  year: "연도", clearFilters: "조건 초기화",
+  payment: "입금 계좌", bank: "은행", account: "계좌번호", holder: "예금주", copy: "복사", copied: "복사됨",
+  paymentDefault: "작품 구매가 확정된 뒤에 입금해 주세요.",
 };
 
 const DICTS: Record<Lang, Dict> = { en, ko };
@@ -74,6 +80,7 @@ export function useLang() {
     profile: (p: Profile) => ({
       name: pick(lang, p.name, p.name_en), headline: pick(lang, p.headline, p.headline_en), intro: pick(lang, p.intro, p.intro_en),
       bio: pick(lang, p.bio, p.bio_en), cv: pick(lang, p.cv, p.cv_en), location: pick(lang, p.location, p.location_en),
+      paymentNote: pick(lang, p.payment_note, p.payment_note_en),
     }),
     exhibition: (e: Exhibition) => ({
       title: pick(lang, e.title, e.title_en), venue: pick(lang, e.venue, e.venue_en),

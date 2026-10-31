@@ -10,7 +10,7 @@ export function ProfileManager({ csrf }: { csrf: string }) {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const body = Object.fromEntries(["name", "headline", "intro", "bio", "cv", "location", "name_en", "headline_en", "intro_en", "bio_en", "cv_en", "location_en"].map(key => [key, String(form.get(key) ?? "")]));
+    const body = Object.fromEntries(["name", "headline", "intro", "bio", "cv", "location", "name_en", "headline_en", "intro_en", "bio_en", "cv_en", "location_en", "bank_name", "bank_account", "bank_holder", "payment_note", "payment_note_en"].map(key => [key, String(form.get(key) ?? "")]));
     try {
       await api("/profile/admin", { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
       await client.invalidateQueries({ queryKey: ["profile"] });
@@ -39,6 +39,14 @@ export function ProfileManager({ csrf }: { csrf: string }) {
         <label className="c12">영어 홈 소개 문장<textarea name="intro_en" defaultValue={p.intro_en} rows={2} maxLength={2000} /></label>
         <label className="c12">영어 작가 소개<textarea name="bio_en" defaultValue={p.bio_en} rows={5} maxLength={10000} /></label>
         <label className="c12">영어 약력 (한 줄에 하나, "2024 Solo show, Seoul"처럼 연도로 시작)<textarea name="cv_en" defaultValue={p.cv_en} rows={5} maxLength={10000} /></label>
+      </fieldset>
+      <fieldset className="lang-fields c12">
+        <legend>입금 계좌 <span>계좌번호를 넣으면 문의 페이지(영어·한국어)에 누구나 볼 수 있게 표시됩니다. 비우면 숨겨집니다.</span></legend>
+        <label className="c4">은행<input name="bank_name" defaultValue={p.bank_name} maxLength={100} placeholder="예: 국민은행" /></label>
+        <label className="c4">계좌번호<input name="bank_account" defaultValue={p.bank_account} maxLength={100} placeholder="예: 123456-01-234567" /></label>
+        <label className="c4">예금주<input name="bank_holder" defaultValue={p.bank_holder} maxLength={100} /></label>
+        <label className="c6">안내 문구 (비우면 기본 문구)<textarea name="payment_note" defaultValue={p.payment_note} rows={2} maxLength={2000} placeholder="작품 구매가 확정된 뒤에 입금해 주세요." /></label>
+        <label className="c6">영어 안내 문구<textarea name="payment_note_en" defaultValue={p.payment_note_en} rows={2} maxLength={2000} placeholder="Please make a transfer only after your purchase has been confirmed." /></label>
       </fieldset>
       <div className="actions"><button className="btn">프로필 저장</button>{status && <span className={`badge ${status.kind === "ok" ? "on" : "bad"}`} role="status">{status.text}</span>}</div>
     </form>

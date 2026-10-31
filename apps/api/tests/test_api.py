@@ -176,7 +176,8 @@ def test_setup_sets_artist_name_and_profile_update(client):
     csrf = response.json()["csrf_token"]
     assert client.get("/api/v1/profile").json()["name"] == "홍길동"
     body = {"name":"김작가", "headline":"제목", "intro":"소개", "bio":"본문", "cv":"2020 졸업", "location":"부산",
-            "name_en":"Kim", "headline_en":"Title", "intro_en":"Intro", "bio_en":"Bio", "cv_en":"2020 Graduated", "location_en":"Busan"}
+            "name_en":"Kim", "headline_en":"Title", "intro_en":"Intro", "bio_en":"Bio", "cv_en":"2020 Graduated", "location_en":"Busan",
+            "bank_name":"국민은행", "bank_account":"123-456-789", "bank_holder":"김작가", "payment_note":"구매 확정 후 입금", "payment_note_en":"Pay after confirmation"}
     assert client.put("/api/v1/profile/admin", json=body).status_code == 403
     assert client.put("/api/v1/profile/admin", json=body, headers={"X-CSRF-Token":csrf}).status_code == 200
     assert client.get("/api/v1/profile").json() == body
@@ -255,3 +256,12 @@ def test_english_fields_round_trip(client):
     assert client.get("/api/v1/exhibitions").json()[0]["title_en"] == "Solo Show"
     # 영어 칸을 보내지 않는 예전 형식의 요청도 그대로 받는다
     assert client.put(f"/api/v1/artworks/admin/{work['id']}", json={"slug":"en-work", "title":"아침"}, headers=headers).json()["title_en"] == ""
+
+
+def test_public_years_lists_published_years_only(client):
+    csrf = client.post("/api/v1/auth/setup", json={"email":"owner@example.com", "password":"very-safe-password"}).json()["csrf_token"]
+    headers = {"X-CSRF-Token": csrf}
+    for slug, year, published in [("a", 2021, True), ("b", 2024, True), ("c", 2024, True), ("d", 2019, False), ("e", None, True)]:
+        client.post("/api/v1/artworks/admin", json={"slug":f"work-{slug}", "title":slug, "year":year, "is_published":published}, headers=headers)
+    assert client.get("/api/v1/artworks/years").json() == [2024, 2021]
+    assert client.get("/api/v1/artworks?year=2024").json()["total"] == 2
