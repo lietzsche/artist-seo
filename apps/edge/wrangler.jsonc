@@ -1,0 +1,69 @@
+// Cloudflare Worker 설정. 웹 화면(정적 파일), API(/api/*), 공개 미디어(/media/*)를 하나의 Worker가 맡는다.
+// 처음 배포하기 전에 database_id(00000000-...)와 PUBLIC_ORIGIN(example.com)을 실제 값으로 바꾼다.
+// 순서와 자동 배포 설정은 docs/cloudflare-deploy-guide.html 참고.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "artist-portfolio",
+  "main": "src/index.ts",
+  // 로컬 런타임(wrangler, 테스트)이 지원하는 날짜 이하여야 한다
+  "compatibility_date": "2026-10-23",
+  "compatibility_flags": ["nodejs_compat"],
+  // 운영은 도메인으로만 연다 (workers.dev 주소는 도메인에 건 WAF 규칙을 거치지 않는다)
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/media/*"]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "artist-portfolio", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [
+    { "binding": "MEDIA_ORIGINALS", "bucket_name": "artist-originals" },
+    { "binding": "MEDIA_PUBLIC", "bucket_name": "artist-public" }
+  ],
+  "images": { "binding": "IMAGES" },
+  // 매일 18:00 UTC = 03:00 KST: 만료된 업로드, 세션, 로그인 기록 정리
+  "triggers": { "crons": ["0 18 * * *"] },
+  "vars": {
+    "PUBLIC_ORIGIN": "https://example.com",
+    "SESSION_COOKIE_SECURE": "true",
+    "MAX_FILE_BYTES": "5368709120",
+    "MAX_IMAGE_BYTES": "20971520",
+    "MAX_TOTAL_BYTES": "107374182400",
+    "SHA256_MAX_BYTES": "1073741824",
+    "UPLOAD_EXPIRY_HOURS": "24",
+    "LOGIN_MAX_ATTEMPTS": "5",
+    "LOGIN_WINDOW_MINUTES": "15"
+  },
+  "observability": { "enabled": true },
+  "env": {
+    // 리허설용. Worker 이름은 artist-portfolio-staging, 주소는 https://artist-portfolio-staging.<계정>.workers.dev
+    // 바인딩과 vars는 환경 사이에 상속되지 않아서 전부 다시 적는다
+    "staging": {
+      "workers_dev": true,
+      "d1_databases": [
+        { "binding": "DB", "database_name": "artist-portfolio-staging", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+      ],
+      "r2_buckets": [
+        { "binding": "MEDIA_ORIGINALS", "bucket_name": "artist-originals-staging" },
+        { "binding": "MEDIA_PUBLIC", "bucket_name": "artist-public-staging" }
+      ],
+      "images": { "binding": "IMAGES" },
+      "triggers": { "crons": ["0 18 * * *"] },
+      "vars": {
+        "PUBLIC_ORIGIN": "https://artist-portfolio-staging.example.workers.dev",
+        "SESSION_COOKIE_SECURE": "true",
+        "MAX_FILE_BYTES": "5368709120",
+        "MAX_IMAGE_BYTES": "20971520",
+        "MAX_TOTAL_BYTES": "10737418240",
+        "SHA256_MAX_BYTES": "1073741824",
+        "UPLOAD_EXPIRY_HOURS": "24",
+        "LOGIN_MAX_ATTEMPTS": "5",
+        "LOGIN_WINDOW_MINUTES": "15"
+      }
+    }
+  }
+}

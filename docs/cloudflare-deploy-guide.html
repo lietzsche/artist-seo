@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloudflare 자동 배포 가이드</title>
+<style>
+:root {
+  --bg: #f7f5f0; --surface: #ffffff; --text: #1d1d1b; --muted: #6b6a66; --line: #e2ded4;
+  --accent: #2f5d50; --accent-soft: #e3eee9; --warn: #8a4b12; --warn-soft: #f8ecdc; --code: #f1eee6;
+  --bad: #9b2c2c; --bad-soft: #f8e3e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --surface: #1f1f1d; --text: #ecebe6; --muted: #a3a19a; --line: #34332f;
+    --accent: #8cc7b3; --accent-soft: #23332e; --warn: #f0b77a; --warn-soft: #3a2c1c; --code: #2a2926;
+    --bad: #f2a29a; --bad-soft: #3a2220;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --surface: #1f1f1d; --text: #ecebe6; --muted: #a3a19a; --line: #34332f;
+  --accent: #8cc7b3; --accent-soft: #23332e; --warn: #f0b77a; --warn-soft: #3a2c1c; --code: #2a2926;
+  --bad: #f2a29a; --bad-soft: #3a2220;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 16px; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+header h1 { font-size: 1.7rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+header p { margin: 4px 0; color: var(--muted); }
+nav.toc { margin-top: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 20px; }
+nav.toc h2 { margin: 0 0 6px; font-size: .95rem; }
+nav.toc ol { margin: 0; padding-left: 20px; columns: 2 260px; column-gap: 28px; }
+nav.toc a { color: var(--accent); text-decoration: none; }
+nav.toc a:hover { text-decoration: underline; }
+section { margin-top: 34px; }
+section > h2 { font-size: 1.2rem; margin: 0 0 6px; display: flex; gap: 10px; align-items: baseline; }
+section > h2 .num { font-variant-numeric: tabular-nums; color: var(--accent); font-size: .95rem; min-width: 1.6em; }
+section > p.lead { margin: 0 0 12px; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin: 12px 0; }
+.card h3 { margin: 0 0 8px; font-size: 1rem; }
+.card ol, .card ul { margin: 0; padding-left: 22px; }
+.card li { margin: 5px 0; }
+.ui { font-weight: 600; background: var(--accent-soft); color: var(--accent); padding: 1px 7px; border-radius: 5px; white-space: nowrap; }
+.path { color: var(--muted); }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86em; background: var(--code); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+pre { margin: 8px 0; background: var(--code); border-radius: 8px; padding: 10px 12px; overflow-x: auto; position: relative; }
+pre code { background: none; padding: 0; font-size: .84rem; white-space: pre; overflow-wrap: normal; }
+.copy { position: absolute; top: 6px; right: 6px; font: inherit; font-size: .75rem; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+.copy:hover { color: var(--accent); border-color: var(--accent); }
+table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: .92rem; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: .84rem; }
+td:first-child { white-space: nowrap; }
+.table-scroll { overflow-x: auto; }
+.note, .warn, .bad { margin: 12px 0; padding: 10px 14px; border-radius: 8px; font-size: .92rem; }
+.note { background: var(--accent-soft); }
+.warn { background: var(--warn-soft); color: var(--warn); }
+.bad { background: var(--bad-soft); color: var(--bad); }
+.note b, .warn b, .bad b { font-weight: 700; }
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 4px; font-size: .9rem; }
+.flow span { background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; }
+.flow i { color: var(--muted); font-style: normal; }
+.check { list-style: none; padding-left: 0 !important; }
+.check li { padding-left: 28px; position: relative; }
+.check li::before { content: ""; position: absolute; left: 2px; top: 5px; width: 15px; height: 15px; border: 1.5px solid var(--muted); border-radius: 4px; }
+footer { margin-top: 48px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 14px; }
+@media (max-width: 560px) { td:first-child { white-space: normal; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Cloudflare 자동 배포 가이드</h1>
+  <p><code>git push</code> 한 번으로 웹 화면, API, DB 마이그레이션까지 Cloudflare Worker에 배포되도록 설정하는 순서입니다.</p>
+  <p>기준: Cloudflare 대시보드의 <b>Workers Builds</b>(Git 연결) 화면, 2026년 11월. 메뉴 이름은 영어 원문을 <span class="ui">이렇게</span> 표시했습니다. Cloudflare가 화면을 바꾸면 이름이 조금 다를 수 있습니다.</p>
+</header>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#overview">전체 구조와 배포 흐름</a></li>
+    <li><a href="#before">시작 전에 확인할 것</a></li>
+    <li><a href="#resources">D1, R2 만들기</a></li>
+    <li><a href="#config">wrangler.jsonc 값 채우기</a></li>
+    <li><a href="#token">배포용 API 토큰 만들기</a></li>
+    <li><a href="#connect">GitHub 저장소 연결</a></li>
+    <li><a href="#build-settings">빌드 설정 다듬기</a></li>
+    <li><a href="#secret">비밀 키와 관리자 계정</a></li>
+    <li><a href="#domain">도메인 연결 (전환)</a></li>
+    <li><a href="#protect">보호 설정: 속도 제한, 결제 알림</a></li>
+    <li><a href="#daily">평소 사용법과 되돌리기</a></li>
+    <li><a href="#staging">스테이징으로 리허설 (선택)</a></li>
+    <li><a href="#trouble">문제 해결</a></li>
+  </ol>
+</nav>
+
+<section id="overview">
+  <h2><span class="num">1</span>전체 구조와 배포 흐름</h2>
+  <p class="lead">Worker 하나가 웹 화면(정적 파일), API(<code>/api/*</code>), 공개 미디어(<code>/media/*</code>)를 모두 맡습니다. 코드는 저장소의 <code>apps/edge</code>(Worker)와 <code>apps/web</code>(화면)입니다.</p>
+  <div class="card">
+    <h3>main 브랜치에 push하면 일어나는 일</h3>
+    <div class="flow">
+      <span>git push</span><i>→</i><span>Cloudflare가 저장소를 받음</span><i>→</i><span><code>npm ci</code> (apps/edge)</span><i>→</i><span>빌드: 웹 화면 빌드</span><i>→</i><span>배포: D1 마이그레이션 → Worker 배포</span>
+    </div>
+    <ul>
+      <li>빌드 명령 <code>npm run build:web</code>은 <code>apps/web</code>을 빌드해 <code>apps/web/dist</code>를 만듭니다.</li>
+      <li>배포 명령 <code>npm run deploy:ci</code>는 새 DB 마이그레이션을 운영 D1에 적용한 뒤 <code>wrangler deploy</code>로 Worker와 화면 파일을 올립니다.</li>
+      <li>마이그레이션이나 빌드가 실패하면 배포하지 않고 멈춥니다. 사이트는 이전 버전 그대로입니다.</li>
+    </ul>
+  </div>
+  <div class="table-scroll"><table>
+    <tr><th>이름</th><th>종류</th><th>용도</th></tr>
+    <tr><td><code>artist-portfolio</code></td><td>Worker</td><td>사이트 전체. 이름은 <code>apps/edge/wrangler.jsonc</code>의 <code>name</code>과 같아야 합니다</td></tr>
+    <tr><td><code>artist-portfolio</code></td><td>D1 데이터베이스</td><td>작품, 문의, 관리자 등 모든 데이터</td></tr>
+    <tr><td><code>artist-originals</code></td><td>R2 버킷 (비공개)</td><td>사진 원본</td></tr>
+    <tr><td><code>artist-public</code></td><td>R2 버킷 (공개용)</td><td>웹용 사진, 영상, 영상 포스터. Worker가 <code>/media/*</code>로 내보냅니다</td></tr>
+  </table></div>
+</section>
+
+<section id="before">
+  <h2><span class="num">2</span>시작 전에 확인할 것</h2>
+  <div class="card">
+    <ul class="check">
+      <li>Cloudflare 계정이 <b>Workers Paid</b> 플랜(월 $5)입니다. <span class="path">대시보드 왼쪽 <span class="ui">Workers &amp; Pages</span> → <span class="ui">Plans</span></span></li>
+      <li>사이트 도메인이 Cloudflare에 등록되어 있습니다(지금 Tunnel에 쓰는 도메인이면 됩니다).</li>
+      <li>내 PC에 <b>Node.js 22 이상</b>이 있습니다. <code>node -v</code>로 확인합니다. Wrangler(Cloudflare 도구)가 22 이상을 요구합니다.</li>
+      <li><code>cloudflare-migration</code> 브랜치의 작업이 <b>main에 합쳐져 있습니다</b>. 자동 배포는 main 브랜치를 기준으로 하고, main에 <code>apps/edge</code>가 없으면 빌드가 실패합니다.</li>
+    </ul>
+  </div>
+  <div class="warn"><b>순서가 중요합니다.</b> 도메인을 Worker에 연결하기(9단계) 전까지는 사이트가 계속 지금의 집 PC(Docker + Tunnel)에서 운영됩니다. 그 전 단계는 몇 번을 다시 해도 방문자에게 영향이 없습니다.</div>
+  <p>내 PC에서 Cloudflare에 로그인해 둡니다. 브라우저가 열리면 허용을 누릅니다.</p>
+  <pre><code>cd apps/edge
+npm ci
+npx wrangler login</code></pre>
+</section>
+
+<section id="resources">
+  <h2><span class="num">3</span>D1, R2 만들기</h2>
+  <p class="lead">한 번만 합니다. 명령어 쪽이 빠르고, 대시보드로 해도 결과는 같습니다.</p>
+  <div class="card">
+    <h3>명령어로 (권장)</h3>
+    <pre><code>cd apps/edge
+npx wrangler d1 create artist-portfolio --location apac
+npx wrangler r2 bucket create artist-originals
+npx wrangler r2 bucket create artist-public</code></pre>
+    <ul>
+      <li><code>d1 create</code>가 출력하는 <code>database_id</code>(UUID)를 복사해 둡니다. 다음 단계에서 씁니다.</li>
+      <li><code>--location apac</code>은 DB를 아시아 태평양에 둡니다. 한국 방문자와 가까워 빠르고, <b>만든 뒤에는 위치를 바꿀 수 없습니다</b>.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>대시보드로</h3>
+    <ol>
+      <li><span class="ui">Storage &amp; databases</span> → <span class="ui">D1 SQL database</span> → <span class="ui">Create Database</span>. 이름 <code>artist-portfolio</code>, 위치는 <span class="ui">Asia-Pacific</span>. 만든 뒤 상세 화면의 <span class="ui">Database ID</span>를 복사합니다.</li>
+      <li><span class="ui">Storage &amp; databases</span> → <span class="ui">R2 object storage</span> → <span class="ui">Create bucket</span>. <code>artist-originals</code>, <code>artist-public</code> 두 개를 만듭니다. 두 버킷 모두 <b>Public access를 켜지 않습니다</b>(공개 파일도 Worker를 거쳐 나갑니다).</li>
+    </ol>
+  </div>
+  <div class="note">이미지 변환(Cloudflare Images)은 따로 만들 것이 없습니다. Worker 설정의 <code>images</code> 바인딩으로 바로 씁니다. 한 달 5,000건까지 무료이고, 사진 한 장당 최대 6건을 씁니다.</div>
+</section>
+
+<section id="config">
+  <h2><span class="num">4</span>wrangler.jsonc 값 채우기</h2>
+  <p class="lead"><code>apps/edge/wrangler.jsonc</code>에서 두 곳을 실제 값으로 바꾸고 커밋합니다.</p>
+  <div class="table-scroll"><table>
+    <tr><th>항목</th><th>지금 값</th><th>바꿀 값</th></tr>
+    <tr><td><code>d1_databases[0].database_id</code></td><td><code>00000000-0000-…</code></td><td>3단계에서 복사한 Database ID</td></tr>
+    <tr><td><code>vars.PUBLIC_ORIGIN</code></td><td><code>https://example.com</code></td><td>실제 사이트 주소. 예: <code>https://myname.com</code> (끝에 <code>/</code> 없이)</td></tr>
+  </table></div>
+  <div class="bad"><b>PUBLIC_ORIGIN이 실제 주소와 한 글자라도 다르면</b> 관리자 로그인 후 저장, 업로드 같은 모든 변경이 403 "허용되지 않은 Origin입니다"로 막힙니다. <code>www</code>를 쓰는지, <code>https</code>인지 확인하세요.</div>
+  <pre><code>git add apps/edge/wrangler.jsonc
+git commit -m "Cloudflare 운영 DB ID와 도메인 설정"
+git push origin main</code></pre>
+  <p>이 push는 아직 저장소를 연결하기 전이라 아무것도 배포하지 않습니다.</p>
+</section>
+
+<section id="token">
+  <h2><span class="num">5</span>배포용 API 토큰 만들기</h2>
+  <p class="lead">Workers Builds가 자동으로 만드는 기본 토큰에는 <b>D1 권한이 없습니다</b>. 배포 때 DB 마이그레이션까지 하려면 D1 권한을 넣은 토큰을 직접 만들어 연결해야 합니다.</p>
+  <div class="card">
+    <ol>
+      <li>오른쪽 위 사람 아이콘 → <span class="ui">Profile</span> → 왼쪽 <span class="ui">API Tokens</span> → <span class="ui">Create Token</span>.</li>
+      <li>맨 아래 <span class="ui">Custom token</span>의 <span class="ui">Get started</span>를 누릅니다.</li>
+      <li><span class="ui">Token name</span>: <code>artist-portfolio Workers Builds</code></li>
+      <li><span class="ui">Permissions</span>에 아래 7줄을 추가합니다(<span class="ui">+ Add more</span>로 줄 추가).
+        <div class="table-scroll"><table>
+          <tr><th>구분</th><th>항목</th><th>권한</th></tr>
+          <tr><td>Account</td><td>Workers Scripts</td><td>Edit</td></tr>
+          <tr><td>Account</td><td>D1</td><td>Edit</td></tr>
+          <tr><td>Account</td><td>Workers R2 Storage</td><td>Edit</td></tr>
+          <tr><td>Account</td><td>Account Settings</td><td>Read</td></tr>
+          <tr><td>Zone</td><td>Workers Routes</td><td>Edit</td></tr>
+          <tr><td>User</td><td>User Details</td><td>Read</td></tr>
+          <tr><td>User</td><td>Memberships</td><td>Read</td></tr>
+        </table></div>
+      </li>
+      <li><span class="ui">Account Resources</span>: <span class="ui">Include</span> → 내 계정. <span class="ui">Zone Resources</span>: <span class="ui">Include</span> → <span class="ui">Specific zone</span> → 사이트 도메인.</li>
+      <li><span class="ui">Continue to summary</span> → <span class="ui">Create Token</span>. 토큰 값은 이 화면에서만 보이지만, Workers Builds에서는 목록에서 고르기만 하면 되므로 따로 적어 둘 필요는 없습니다.</li>
+    </ol>
+  </div>
+  <div class="note">기본 토큰 권한(Workers Scripts, KV, R2, Account Settings, Workers Routes, User Details, Memberships)에 D1 Edit을 더한 구성입니다. KV는 이 사이트에서 쓰지 않아 뺐습니다. Workers Builds는 현재 사용자 토큰만 지원합니다(계정 토큰은 아직 미지원).</div>
+</section>
+
+<section id="connect">
+  <h2><span class="num">6</span>GitHub 저장소 연결</h2>
+  <div class="card">
+    <ol>
+      <li>대시보드 왼쪽 <span class="ui">Workers &amp; Pages</span> → <span class="ui">Create application</span>.</li>
+      <li><span class="ui">GitHub</span>를 고릅니다. 처음이면 GitHub 화면이 열리고 <b>Cloudflare Workers and Pages</b> 앱 설치를 묻습니다. <span class="ui">Only select repositories</span>로 이 저장소만 허용하는 것을 권장합니다.</li>
+      <li>저장소 목록에서 이 저장소를 고릅니다(검색창 사용 가능).</li>
+      <li>설정 화면을 아래 표처럼 채웁니다. <span class="ui">Root directory</span>는 <span class="ui">Advanced settings</span>를 펼쳐야 보일 수 있습니다.
+        <div class="table-scroll"><table>
+          <tr><th>항목</th><th>값</th><th>설명</th></tr>
+          <tr><td><span class="ui">Project name</span></td><td><code>artist-portfolio</code></td><td>Worker 이름. <code>wrangler.jsonc</code>의 <code>name</code>과 <b>반드시 같아야</b> 합니다</td></tr>
+          <tr><td><span class="ui">Build command</span></td><td><code>npm run build:web</code></td><td>웹 화면을 빌드합니다</td></tr>
+          <tr><td><span class="ui">Deploy command</span></td><td><code>npm run deploy:ci</code></td><td>D1 마이그레이션 후 배포. 기본값 <code>npx wrangler deploy</code>를 바꿉니다</td></tr>
+          <tr><td><span class="ui">Root directory</span></td><td><code>apps/edge</code></td><td>Worker 설정과 <code>package.json</code>이 있는 곳</td></tr>
+          <tr><td><span class="ui">API token</span></td><td>5단계에서 만든 토큰</td><td>기본 토큰이면 마이그레이션 단계가 권한 오류로 실패합니다</td></tr>
+          <tr><td><span class="ui">Build variables</span></td><td>비워 둠</td><td>Node 버전은 <code>apps/edge/.nvmrc</code>(22)로 정해져 있습니다</td></tr>
+        </table></div>
+      </li>
+      <li><span class="ui">Save and Deploy</span>를 누르면 첫 빌드가 시작됩니다. 3~5분 걸립니다.</li>
+    </ol>
+  </div>
+  <div class="note">이미 <code>wrangler deploy</code>로 Worker를 만들어 둔 경우에는 <span class="ui">Workers &amp; Pages</span> → <code>artist-portfolio</code> → <span class="ui">Settings</span> → <span class="ui">Builds</span> → <span class="ui">Connect</span>로 같은 값을 넣습니다.</div>
+  <p>첫 배포가 성공해도 아직 접속 주소가 없습니다(운영 Worker는 <code>workers.dev</code> 주소를 꺼 두었습니다). 정상입니다. 도메인은 9단계에서 연결합니다.</p>
+</section>
+
+<section id="build-settings">
+  <h2><span class="num">7</span>빌드 설정 다듬기</h2>
+  <p class="lead"><span class="ui">Workers &amp; Pages</span> → <code>artist-portfolio</code> → <span class="ui">Settings</span> → <span class="ui">Build</span>(화면에 따라 <span class="ui">Builds</span>)에서 합니다. 저장한 설정은 다음 빌드부터 적용됩니다.</p>
+  <div class="card">
+    <h3>Branch control</h3>
+    <ul>
+      <li>운영 브랜치(Production branch)가 <code>main</code>인지 확인합니다.</li>
+      <li><span class="ui">Enable Preview Builds</span>는 <b>끕니다</b>. 다른 브랜치를 push하면 미리보기 버전이 만들어지는데, 이 버전도 <b>운영 DB와 버킷을 그대로 씁니다</b>. 테스트 데이터가 운영에 섞일 수 있습니다. 리허설은 12단계의 스테이징을 씁니다.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Build watch paths</h3>
+    <p style="margin:0 0 6px">문서만 고친 push로 빌드가 돌지 않게 합니다(빌드 시간 절약).</p>
+    <div class="table-scroll"><table>
+      <tr><th>항목</th><th>값</th></tr>
+      <tr><td>Include paths</td><td><code>apps/edge/*</code>, <code>apps/web/*</code></td></tr>
+      <tr><td>Exclude paths</td><td>비워 둠</td></tr>
+    </table></div>
+  </div>
+  <div class="note">빌드 한도: 유료 플랜은 월 6,000분, 빌드 1회 최대 20분입니다. 이 사이트의 빌드는 보통 5분 안에 끝납니다.</div>
+</section>
+
+<section id="secret">
+  <h2><span class="num">8</span>비밀 키와 관리자 계정</h2>
+  <div class="card">
+    <h3>APP_SECRET_KEY 넣기</h3>
+    <p style="margin:0 0 6px">로그인 시도 기록과 문의 기록의 식별값을 만드는 비밀 키입니다. 코드나 <code>wrangler.jsonc</code>에 쓰지 않습니다.</p>
+    <pre><code>cd apps/edge
+openssl rand -hex 32              # 나온 값을 복사
+npx wrangler secret put APP_SECRET_KEY</code></pre>
+    <p style="margin:6px 0 0">대시보드로 하려면 <span class="ui">Settings</span> → <span class="ui">Variables and Secrets</span> → <span class="ui">+ Add</span> → <span class="ui">Type</span>: <span class="ui">Secret</span>, 이름 <code>APP_SECRET_KEY</code>. 비밀 값은 저장 즉시 새 버전으로 반영됩니다.</p>
+  </div>
+  <div class="card">
+    <h3>관리자 계정 만들기</h3>
+    <pre><code>cd apps/edge
+npm run create-admin -- 내이메일@example.com</code></pre>
+    <ul>
+      <li>비밀번호(10자 이상)를 두 번 입력합니다. 화면에 보이지 않습니다.</li>
+      <li>같은 명령을 다시 실행하면 비밀번호가 바뀌고 기존 로그인은 모두 끊깁니다(비밀번호를 잊었을 때도 이 명령).</li>
+    </ul>
+  </div>
+  <div class="bad"><b>도메인 연결 전에 반드시 관리자를 만드세요.</b> 관리자가 없는 상태로 공개하면, 처음 들어온 사람이 "관리자 계정 설정" 화면에서 관리자가 될 수 있습니다.</div>
+</section>
+
+<section id="domain">
+  <h2><span class="num">9</span>도메인 연결 (전환)</h2>
+  <p class="lead">여기서부터 방문자가 새 사이트를 보게 됩니다. 방문자가 적은 시간에 합니다. 끊기는 시간은 보통 1~2분입니다.</p>
+  <div class="card">
+    <h3>① Tunnel이 쓰던 주소 비우기</h3>
+    <ol>
+      <li><span class="ui">Zero Trust</span> → <span class="ui">Networks</span> → <span class="ui">Tunnels</span> → 쓰던 터널 → <span class="ui">Public Hostname</span>(또는 <span class="ui">Published application routes</span>)에서 사이트 도메인 항목을 지웁니다.</li>
+      <li>도메인 → <span class="ui">DNS</span> → <span class="ui">Records</span>에서 같은 이름의 <code>CNAME</code>(<code>…cfargotunnel.com</code>)이 남아 있으면 지웁니다. <b>같은 이름의 레코드가 있으면 Worker 도메인 연결이 실패합니다.</b></li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>② Worker에 도메인 붙이기</h3>
+    <p style="margin:0 0 6px">설정 파일로 관리하면 다음 배포 때도 그대로 유지됩니다. <code>apps/edge/wrangler.jsonc</code>의 맨 위 설정(<code>"observability"</code> 근처)에 추가하고 push합니다.</p>
+    <pre><code>"routes": [{ "pattern": "myname.com", "custom_domain": true }],</code></pre>
+    <pre><code>git commit -am "운영 도메인을 Worker에 연결" &amp;&amp; git push origin main</code></pre>
+    <p style="margin:6px 0 0">대시보드로 하려면 <span class="ui">Workers &amp; Pages</span> → <code>artist-portfolio</code> → <span class="ui">Settings</span> → <span class="ui">Domains &amp; Routes</span> → <span class="ui">+ Add</span> → <span class="ui">Custom domain</span> → 도메인 입력 → <span class="ui">Add Custom Domain</span>. DNS 레코드와 인증서는 Cloudflare가 자동으로 만듭니다. 이 방법을 썼더라도 위 <code>routes</code>를 설정 파일에 같이 적어 두는 것을 권장합니다.</p>
+  </div>
+  <div class="note"><code>www.myname.com</code>도 쓰려면 <code>routes</code>에 한 줄 더 추가하고, <code>PUBLIC_ORIGIN</code>은 대표 주소 하나만 둡니다. 다른 주소는 <span class="ui">Rules</span> → <span class="ui">Redirect Rules</span>로 대표 주소로 보냅니다.</div>
+  <div class="card">
+    <h3>③ 확인</h3>
+    <pre><code>curl -fsS https://myname.com/api/v1/health/ready</code></pre>
+    <ul class="check">
+      <li><code>{"status":"ready"}</code>가 나옵니다.</li>
+      <li>첫 화면, 작품 목록, 작품 상세가 열립니다. 새로고침해도 404가 나지 않습니다.</li>
+      <li><code>/admin</code>에서 8단계 관리자로 로그인되고, 작품 저장이 됩니다.</li>
+      <li>사진 하나, 영상 하나를 올려 화면에 보이고 영상이 재생됩니다.</li>
+      <li>문의 페이지에서 문의를 보내고 관리자 화면 <span class="ui">문의</span>에 들어옵니다.</li>
+      <li>전체 점검은 <a href="test-scenarios.html">수동 테스트 시나리오</a>를 따릅니다.</li>
+    </ul>
+  </div>
+  <p>문제없으면 집 PC의 Docker 스택은 <code>docker compose stop</code>으로 <b>중지만</b> 해 둡니다(지우지 않음). 1주일 정도 지켜본 뒤 정리합니다.</p>
+</section>
+
+<section id="protect">
+  <h2><span class="num">10</span>보호 설정: 속도 제한, 결제 알림</h2>
+  <div class="card">
+    <h3>WAF 속도 제한</h3>
+    <p style="margin:0 0 6px">로그인 무차별 대입과 문의 폭주를 Worker까지 오기 전에 막습니다(Worker CPU 요금도 막는 효과).</p>
+    <ol>
+      <li>도메인 → <span class="ui">Security</span> → <span class="ui">Security rules</span>(이전 화면에서는 <span class="ui">WAF</span> → <span class="ui">Rate limiting rules</span>) → <span class="ui">Create rule</span> → <span class="ui">Rate limiting rules</span>.</li>
+      <li>규칙 1: <span class="ui">URI Path</span> <span class="ui">equals</span> <code>/api/v1/auth/login</code>, 같은 IP 기준 10초에 5회 초과 시 <span class="ui">Block</span>, 10초 동안.</li>
+      <li>규칙 2: <span class="ui">URI Path</span> <span class="ui">equals</span> <code>/api/v1/inquiries</code> 그리고 <span class="ui">Request Method</span> <code>POST</code>, 같은 IP 기준 10초에 3회 초과 시 <span class="ui">Block</span>.</li>
+    </ol>
+    <p style="margin:6px 0 0" class="path">무료·Pro 도메인에서 쓸 수 있는 규칙 수와 기간 옵션은 플랜마다 다릅니다. 규칙이 하나만 허용되면 로그인 규칙을 먼저 만듭니다. 앱 안에도 이메일·IP별 5회 실패 시 15분 잠금이 있습니다.</p>
+  </div>
+  <div class="card">
+    <h3>결제 알림</h3>
+    <ol>
+      <li><span class="ui">Manage Account</span> → <span class="ui">Notifications</span> → <span class="ui">Add</span>.</li>
+      <li><span class="ui">Usage Based Billing</span>을 고르고, Workers, R2, Images 사용량에 알림 기준을 정합니다.</li>
+    </ol>
+    <p style="margin:6px 0 0" class="path">예상 비용은 월 $6~7 정도입니다(<a href="cloudflare-migration.md">이전 검토 문서</a> 참고).</p>
+  </div>
+  <div class="card">
+    <h3>원본 백업</h3>
+    <p style="margin:0">D1은 <b>Time Travel</b>로 30일 안의 시점으로 되돌릴 수 있습니다. R2에는 그런 기능이 없으므로 사진 원본(<code>artist-originals</code>)은 <code>rclone</code> 등으로 주기적으로 개인 PC나 외장 디스크에 복사해 둡니다.</p>
+  </div>
+</section>
+
+<section id="daily">
+  <h2><span class="num">11</span>평소 사용법과 되돌리기</h2>
+  <div class="card">
+    <h3>배포</h3>
+    <pre><code>git push origin main</code></pre>
+    <p style="margin:6px 0 0">진행 상황은 <span class="ui">Workers &amp; Pages</span> → <code>artist-portfolio</code> → <span class="ui">Deployments</span>에서 봅니다. 아래 <span class="ui">View Build History</span>에 빌드마다 로그가 남습니다(90일 보관). GitHub에서도 커밋 옆에 빌드 결과가 표시됩니다.</p>
+  </div>
+  <div class="card">
+    <h3>배포 전 내 PC에서 확인</h3>
+    <pre><code>cd apps/edge
+npm run typecheck &amp;&amp; npm test     # Worker 테스트 (로컬 D1, R2 사용)
+npm run build:web                   # 화면 빌드</code></pre>
+    <p style="margin:6px 0 0">자동 배포는 테스트를 돌리지 않습니다. 빌드 시간을 줄이려고 뺐으므로 push 전에 위 명령으로 확인합니다. 빌드 때도 테스트를 돌리려면 <span class="ui">Build command</span>를 <code>npm test &amp;&amp; npm run build:web</code>으로 바꿉니다.</p>
+  </div>
+  <div class="card">
+    <h3>DB 구조를 바꿀 때</h3>
+    <ul>
+      <li><code>apps/edge/migrations/</code>에 다음 번호의 파일을 만듭니다: <code>npx wrangler d1 migrations create artist-portfolio 설명</code></li>
+      <li>마이그레이션은 배포 직전에 적용되므로 <b>컬럼 추가, 기본값 지정처럼 기존 코드가 계속 동작하는 변경만</b> 합니다. 컬럼 삭제나 이름 변경은 코드 배포 후 다음 마이그레이션에서 합니다.</li>
+      <li>내 PC에서 먼저: <code>npm run db:migrate:local</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>문제가 생겼을 때 되돌리기</h3>
+    <div class="table-scroll"><table>
+      <tr><th>대상</th><th>방법</th></tr>
+      <tr><td>코드</td><td><span class="ui">Deployments</span>에서 이전 버전의 <span class="ui">⋯</span> → <span class="ui">Rollback</span>. 또는 <code>npx wrangler rollback</code>. 그다음 원인 커밋을 <code>git revert</code>로 되돌리고 push합니다(안 그러면 다음 push 때 다시 배포됩니다)</td></tr>
+      <tr><td>DB</td><td><code>npx wrangler d1 time-travel info artist-portfolio --timestamp 2026-11-01T03:00:00Z</code>로 시점의 bookmark를 얻고 <code>npx wrangler d1 time-travel restore artist-portfolio --bookmark &lt;값&gt;</code>. 그 시점 이후 데이터(새 문의 등)는 사라집니다</td></tr>
+      <tr><td>도메인 전체</td><td>최악의 경우: Worker의 도메인을 지우고 Tunnel의 Public Hostname을 다시 만들고 <code>docker compose start</code>. 그 사이 새 사이트에 들어온 문의와 업로드는 옮겨지지 않습니다</td></tr>
+    </table></div>
+  </div>
+</section>
+
+<section id="staging">
+  <h2><span class="num">12</span>스테이징으로 리허설 (선택)</h2>
+  <p class="lead">운영과 완전히 분리된 DB와 버킷으로 <code>https://artist-portfolio-staging.&lt;계정&gt;.workers.dev</code>에 띄워 봅니다. 자동 배포와 별개로 내 PC에서 배포합니다.</p>
+  <div class="card">
+    <pre><code>cd apps/edge
+npx wrangler d1 create artist-portfolio-staging --location apac
+npx wrangler r2 bucket create artist-originals-staging
+npx wrangler r2 bucket create artist-public-staging
+# wrangler.jsonc의 env.staging에 database_id와 PUBLIC_ORIGIN(workers.dev 주소)을 넣는다
+npx wrangler secret put APP_SECRET_KEY --env staging     # 운영과 다른 값
+npm run create-admin -- 내이메일@example.com --staging
+bash scripts/deploy.sh staging</code></pre>
+    <ul>
+      <li><code>workers.dev</code> 주소의 계정 부분은 <span class="ui">Workers &amp; Pages</span> 첫 화면 오른쪽 <span class="ui">Account details</span>의 <span class="ui">Subdomain</span>에서 봅니다.</li>
+      <li>스테이징 주소는 도메인의 WAF 규칙을 거치지 않습니다. 주소를 외부에 알리지 말고, 다 쓰면 <code>npx wrangler delete --env staging</code>으로 지웁니다.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="trouble">
+  <h2><span class="num">13</span>문제 해결</h2>
+  <div class="table-scroll"><table>
+    <tr><th>증상 (빌드 로그 또는 화면)</th><th>원인과 해결</th></tr>
+    <tr><td><code>The name in your Wrangler configuration file (…) must match the name of your Worker</code></td><td>대시보드의 Worker 이름과 <code>wrangler.jsonc</code>의 <code>name</code>이 다릅니다. 둘 다 <code>artist-portfolio</code>로 맞춥니다</td></tr>
+    <tr><td><code>Missing entry-point</code></td><td><span class="ui">Root directory</span>가 <code>apps/edge</code>가 아닙니다. <span class="ui">Settings</span> → <span class="ui">Build</span> → <span class="ui">Build configuration</span>에서 고칩니다</td></tr>
+    <tr><td>마이그레이션 단계에서 <code>Authentication error</code>, <code>not authorized</code>, <code>[code: 10000]</code></td><td>빌드 토큰에 D1 Edit 권한이 없습니다. 5단계 토큰을 만들어 <span class="ui">API token</span>에서 고릅니다</td></tr>
+    <tr><td><code>More than one account available</code> 또는 <code>[code: 7003]</code></td><td>계정이 여러 개입니다. <code>wrangler.jsonc</code>에 <code>"account_id": "…"</code>를 넣습니다(<span class="ui">Workers &amp; Pages</span> 첫 화면 <span class="ui">Account details</span>의 <span class="ui">Account ID</span>)</td></tr>
+    <tr><td><code>Couldn't find a D1 DB with the name or binding 'artist-portfolio'</code>, <code>database_id</code> 관련 오류</td><td>4단계의 <code>database_id</code>가 아직 <code>00000000-…</code>이거나 다른 계정의 DB입니다</td></tr>
+    <tr><td><code>The build token selected for this build has been deleted or rolled</code></td><td>토큰을 지웠거나 다시 발급했습니다. 5단계로 새로 만들고 다시 고릅니다</td></tr>
+    <tr><td><code>npm ci can only install packages when your package.json and package-lock.json … are in sync</code></td><td><code>package.json</code>만 고치고 잠금 파일을 안 올렸습니다. 내 PC에서 <code>npm install</code> 후 <code>package-lock.json</code>을 커밋합니다</td></tr>
+    <tr><td><code>Build was timed out</code></td><td>20분 초과. 대개 일시적인 문제라 <span class="ui">Retry build</span>로 다시 시도합니다</td></tr>
+    <tr><td>배포는 됐는데 화면이 하얗거나 404</td><td>빌드 명령이 <code>npm run build:web</code>인지, 빌드 로그에 <code>Read … files from the assets directory</code>가 있는지 확인합니다</td></tr>
+    <tr><td>로그인 후 저장하면 403 "허용되지 않은 Origin입니다"</td><td><code>PUBLIC_ORIGIN</code>이 실제 주소와 다릅니다(<code>www</code>, <code>http/https</code>, 끝의 <code>/</code>). 고치고 push합니다</td></tr>
+    <tr><td>로그인하면 바로 다시 로그인 화면</td><td><code>http://</code>로 접속했거나 <code>SESSION_COOKIE_SECURE</code>가 맞지 않습니다. 운영은 <code>https</code>와 <code>true</code>입니다</td></tr>
+    <tr><td>도메인 추가 시 <code>hostname already has externally managed DNS records</code> 같은 오류</td><td>9단계 ①의 기존 CNAME을 지우지 않았습니다</td></tr>
+    <tr><td>GitHub 저장소가 목록에 안 보임</td><td><a href="https://github.com/settings/installations">github.com/settings/installations</a>에서 Cloudflare Workers and Pages 앱의 저장소 접근을 추가하거나, 앱을 지우고 다시 연결합니다</td></tr>
+  </table></div>
+</section>
+
+<footer>
+  관련 문서: <a href="cloudflare-migration-guide.md">이전 착수 가이드(구현 명세)</a> · <a href="cloudflare-migration.md">비용과 위험 검토</a> · <a href="test-scenarios.html">수동 테스트 시나리오</a><br>
+  공식 문서: <a href="https://developers.cloudflare.com/workers/ci-cd/builds/">Workers Builds</a> · <a href="https://developers.cloudflare.com/workers/ci-cd/builds/configuration/">빌드 설정</a> · <a href="https://developers.cloudflare.com/workers/configuration/routing/custom-domains/">Custom Domains</a> · <a href="https://developers.cloudflare.com/d1/reference/migrations/">D1 마이그레이션</a>
+</footer>
+</div>
+<script>
+// 코드 블록마다 복사 버튼
+for (const pre of document.querySelectorAll("pre")) {
+  const button = document.createElement("button");
+  button.className = "copy"; button.type = "button"; button.textContent = "복사";
+  button.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(pre.querySelector("code").innerText); button.textContent = "복사됨"; }
+    catch { button.textContent = "직접 선택하세요"; }
+    setTimeout(() => (button.textContent = "복사"), 1500);
+  });
+  pre.appendChild(button);
+}
+</script>
+</body>
+</html>

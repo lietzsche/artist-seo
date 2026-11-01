@@ -15,3 +15,7 @@ storage/*
 !storage/tmp/.gitkeep
 
 backups/
+
+# Cloudflare Worker (apps/edge): 개발용 비밀 값과 로컬 D1/R2
+.dev.vars
+.wrangler/

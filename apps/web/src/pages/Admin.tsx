@@ -8,7 +8,7 @@ import { ProfileManager } from "./ProfileManager";
 import { InquiryManager, inquiriesQuery } from "./InquiryManager";
 
 type Me = { email: string; csrf_token: string };
-type Overview = { storage: { stored_bytes: number; reserved_bytes: number; max_total_bytes: number; disk_free_bytes: number; min_free_bytes: number; max_file_bytes: number }; new_inquiries: number; failed_jobs: { id: string; media_id: string; kind: string; attempts: number; max_attempts: number; error: string | null }[] };
+type Overview = { storage: { stored_bytes: number; reserved_bytes: number; max_total_bytes: number; max_file_bytes: number }; new_inquiries: number; failed_jobs: { id: string; media_id: string; kind: string; attempts: number; max_attempts: number; error: string | null }[] };
 const bytes = (value: number) => value >= 1024 ** 3 ? `${(value / 1024 ** 3).toFixed(1)} GiB` : value >= 1024 ** 2 ? `${(value / 1024 ** 2).toFixed(1)} MiB` : `${value} B`;
 const TABS = [["works", "작품"], ["inquiries", "문의"], ["profile", "작가 프로필"], ["collections", "시리즈·전시"], ["status", "서버 현황"]] as const;
 type Tab = typeof TABS[number][0];
@@ -121,7 +121,8 @@ function ServerStatus({ csrf }: { csrf: string }) {
   const client = useQueryClient();
   const overview = useQuery({ queryKey: ["admin-overview"], queryFn: () => api<Overview>("/admin/overview") });
   async function retry(jobId: string) {
-    await api(`/admin/jobs/${jobId}/retry`, { method: "POST", headers: { "X-CSRF-Token": csrf } });
+    // 그 자리에서 다시 실행한다. 실패하면 목록에 새 오류가 다시 나타난다
+    await api(`/admin/jobs/${jobId}/retry`, { method: "POST", headers: { "X-CSRF-Token": csrf } }).catch(() => undefined);
     await client.invalidateQueries({ queryKey: ["admin-overview"] });
   }
   const o = overview.data;
@@ -130,12 +131,12 @@ function ServerStatus({ csrf }: { csrf: string }) {
     <div className="stats">
       <div><strong>{bytes(o.storage.stored_bytes)}</strong><span>저장된 원본 / 한도 {bytes(o.storage.max_total_bytes)}</span></div>
       <div><strong>{bytes(o.storage.reserved_bytes)}</strong><span>진행 중 업로드 예약량</span></div>
-      <div><strong>{bytes(o.storage.disk_free_bytes)}</strong><span>디스크 잔여 공간</span></div>
+      <div><strong>{bytes(Math.max(0, o.storage.max_total_bytes - o.storage.stored_bytes - o.storage.reserved_bytes))}</strong><span>남은 저장 용량</span></div>
       <div><strong>{o.new_inquiries}</strong><span>확인하지 않은 문의</span></div>
     </div>
     <section className="panel" style={{ marginTop: "1.25rem" }}>
-      <h2>최근 실패한 변환 작업</h2>
-      <p className="hint">사진·영상 변환이 실패하면 여기에 나타납니다. 원인을 확인한 뒤 다시 시도할 수 있습니다.</p>
+      <h2>최근 실패한 이미지 처리</h2>
+      <p className="hint">사진을 웹용 크기로 만들지 못하면 여기에 나타납니다. 원인을 확인한 뒤 다시 시도할 수 있습니다.</p>
       {o.failed_jobs.length === 0 ? <p className="muted" style={{ margin: 0 }}>실패한 작업이 없습니다.</p> :
         <ul className="rows failed-jobs">{o.failed_jobs.map(job => <li key={job.id} className="row">
           <div><div className="name">{job.kind} · {job.attempts}/{job.max_attempts}회 시도</div><div className="sub" style={{ color: "var(--bad)" }}>{job.error}</div></div>

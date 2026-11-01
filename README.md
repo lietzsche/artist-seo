@@ -17,6 +17,10 @@
 - `infra/nginx`: 동일 출처 gateway와 공개 미디어 설정
 - `docs`: 운영·이전·진행 문서, [DB 스키마](apps/api/migrations/01_init.sql), [수동 테스트 시나리오](docs/test-scenarios.html)
 
+## Cloudflare 이전 (진행 중)
+
+`cloudflare-migration` 브랜치에 Cloudflare Worker(Hono + D1 + R2)로 옮긴 구현이 있습니다(`apps/edge`). 배포와 git push 자동 배포 설정은 [Cloudflare 자동 배포 가이드](docs/cloudflare-deploy-guide.html), 구현 명세는 [이전 착수 가이드](docs/cloudflare-migration-guide.md)를 봅니다. 전환 전까지 운영은 아래 Docker 구성 그대로입니다.
+
 ## 필요 도구
 
 - Docker와 Docker Compose

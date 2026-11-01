@@ -2,7 +2,9 @@
 
 이 문서만 보고 구현을 시작할 수 있도록 확정된 결정, 명세, 스키마, 설정, 작업 순서를 적은 실행 문서다. 왜 이전하는가, 비용과 위험은 [cloudflare-migration.md](cloudflare-migration.md)에 있다.
 
-작성 기준일은 2026-10-31이다. "S1" 같은 표시는 7절의 사전 시험 번호이며, 시험 결과로 확정할 항목이다.
+작성 기준일은 2026-10-31이다. "S1" 같은 표시는 9절의 사전 시험 번호이며, 시험 결과로 확정할 항목이다.
+
+> **구현 현황 (2026-11-01, `cloudflare-migration` 브랜치)**: 이 문서대로 `apps/edge`(Hono + D1 + R2)와 프론트 수정(7절)을 구현했다. Worker 테스트 32개가 로컬 D1·R2에서 통과하고, `wrangler dev`로 화면, 로그인, 이미지 업로드와 파생본 생성(로컬 Images), 11MB 영상의 3청크 업로드, SHA-256 일치, Range 재생, 원본 다운로드를 확인했다. 아직 실제 Cloudflare 계정에는 배포하지 않았다. 배포와 git push 자동 배포 설정은 [cloudflare-deploy-guide.html](cloudflare-deploy-guide.html)을 따른다. 구현하면서 정한 것과 달라진 점, 사전 시험(9절) 결과는 14절에 적었다.
 
 ## 0. 원칙
 
@@ -548,7 +550,7 @@ npx wrangler deploy "${ENV_ARGS[@]}"
 - 문제가 생기면 코드는 `npx wrangler rollback`으로, DB는 출력된 bookmark로 `wrangler d1 time-travel restore`로 되돌린다.
 - 배포 후 `curl -fsS https://<도메인>/api/v1/health/ready`로 확인한다.
 - 프론트는 API와 같은 도메인이라 `VITE_API_BASE_URL`, `VITE_MEDIA_BASE_URL`을 지정하지 않는다.
-- GitHub Actions 자동 배포는 이번 범위에서 제외한다(필요하면 Cloudflare API 토큰을 저장소 Secret으로 두고 같은 스크립트를 실행).
+- git push 자동 배포는 GitHub Actions 대신 Cloudflare **Workers Builds**(Git 연결)를 쓴다. 빌드 명령 `npm run build:web`, 배포 명령 `npm run deploy:ci`(마이그레이션 후 배포), 루트 디렉터리 `apps/edge`. 기본 빌드 토큰에는 D1 권한이 없어 D1 Edit을 넣은 토큰을 따로 만든다. 절차는 [cloudflare-deploy-guide.html](cloudflare-deploy-guide.html).
 
 ## 9. 사전 시험 (구현 전에 한다)
 
@@ -624,6 +626,23 @@ npx wrangler deploy "${ENV_ARGS[@]}"
 | Argon2 사양 (기존 유지 vs 비용 낮춤) | 기존 유지(`m=65536,t=3,p=2`) | S1 결과 |
 | 영상 파일 해시 | 계산 | S5 결과 |
 | 개인정보 국외 이전 고지 | 미정. 문의자의 이름과 이메일이 지금은 집 PC(국내)에 저장되지만, 이전 후에는 Cloudflare(해외 사업자, D1은 아시아 태평양 지역)에 저장된다. 현재 동의 문구(`lib/i18n.ts`의 `consent`)는 수집 목적만 적고 있다. 국외 이전 고지(이전받는 자, 국가, 항목, 보유 기간)가 필요한지 확인하고, 필요하면 동의 문구나 개인정보 처리방침 페이지를 추가한다. 법률 판단이 필요한 항목이다 | M6, 전환 전 |
+
+## 14. 구현하면서 정한 것 (2026-11-01)
+
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| Argon2 (S1) | `@noble/hashes`의 순수 JS Argon2id. 새 해시는 `m=19456,t=2,p=1`(S1 대안 a), 기존 `m=65536,t=3,p=2` 해시도 문자열의 값으로 검증 | Workers는 실행 중 WASM 컴파일(`hash-wasm` 방식)을 막는다. 순수 JS로 1회 약 0.2초(기존 사양은 약 1초, Node 22 측정). argon2-cffi가 만든 해시 검증을 테스트로 확인. 옮겨 올 기존 계정이 없어 로그인 때 자동 재해시는 넣지 않았다 |
+| 테스트 (S7) | `@cloudflare/vitest-pool-workers`가 `@cloudflare/vitest-plugin`으로 이름이 바뀌어 그것을 쓴다. Images는 테스트에서 대역(stub) | 합격 |
+| 영상 SHA-256 (S5) | `SHA256_MAX_BYTES`(기본 1GiB) 이하만 계산하고 넘으면 `NULL` | 5GB 해시는 완료 요청 시간이 길어진다. 실제 시간은 배포 후 확인 |
+| 이미지 파생본 실패 | `complete`는 200으로 응답하고 `job_status:"failed"`, `error`를 함께 준다. 프론트가 안내를 띄우고 서버 현황에서 재시도 | 원본은 이미 저장됐으므로 업로드 자체를 실패로 보이지 않게 |
+| 재시도 응답 | `{status:"completed"\|"failed", error}` (그 자리에서 실행) | 큐가 없어졌다 |
+| 영상 포스터 키 | `{media_id}/poster-{8자}.jpg` | 공개 파일은 1년 캐시라 다시 올릴 때 이름을 바꾼다 |
+| 형식이 빈 파일 | `content_type`이 비었거나 `application/octet-stream`이면 파일 이름의 확장자로 판단 | 일부 안드로이드가 형식을 비워 보낸다 |
+| 서버 현황 | `storage`에 `max_image_bytes` 추가, `disk_free_bytes`, `min_free_bytes` 제거 | |
+| Preview 빌드 | 끈다 | 미리보기 버전도 운영 D1·R2를 쓴다 |
+| compatibility_date | `2026-10-23` | 로컬 workerd가 지원하는 최신 날짜 이하여야 테스트가 돈다 |
+
+남은 확인(배포 후, S2·S6): 투명 PNG를 JPEG로 만들 때 흰 배경이 되는지(로컬 Images는 저충실도라 `background`를 무시하고 검정으로 채운다. 지금 화면은 WebP 파생본만 쓰고 JPEG 파생본은 쓰지 않아 영향이 작지만 확인한다), EXIF 회전과 색 프로필, 결과 파일에 GPS가 없는지, iOS Safari에서 큰 MP4 탐색.
 
 ## 부록 A. 데이터 이전 (지금은 하지 않음, 나중에 필요할 때)
 
