@@ -5,6 +5,11 @@
 - 구현 명세: [docs/cloudflare-migration-guide.md](../../docs/cloudflare-migration-guide.md)
 - 배포와 git push 자동 배포 설정: [docs/cloudflare-deploy-guide.html](../../docs/cloudflare-deploy-guide.html)
 
+배포하려고 소스를 고칠 필요는 없다. `wrangler.jsonc`에는 계정마다 다른 값을 적지 않았다.
+- D1, R2: ID 없이 이름만 적었다. 첫 배포 때 Wrangler가 그 이름으로 찾고, 없으면 만든다.
+- `PUBLIC_ORIGIN`(사이트 주소)과 `APP_SECRET_KEY`: 대시보드 Worker → Settings → Variables and Secrets에서 넣는다(`keep_vars`로 배포해도 유지).
+- 바인딩(D1, R2)은 대시보드에서 바꾸지 않는다. 배포 때마다 `wrangler.jsonc` 내용으로 되돌아간다.
+
 ## 로컬 개발
 
 Node.js 22 이상이 필요하다.
@@ -43,5 +48,6 @@ src/media/              파일 형식 판별, 이미지 파생본(Images 바인�
 src/lib/                세션·CSRF, Argon2id, 응답 변환, 공통 함수
 migrations/             D1 스키마 (번호순으로 적용)
 scripts/create-admin.mjs  관리자 생성과 비밀번호 재설정
-scripts/deploy.sh       내 PC에서 직접 배포 (운영 / staging)
+scripts/deploy.sh       내 PC에서 직접 배포 (테스트·빌드 후 deploy-ci.sh, 운영 / staging)
+scripts/deploy-ci.sh    git push 자동 배포의 배포 단계 (마이그레이션과 배포, 첫 배포면 D1·R2 생성)
 ```

@@ -16,7 +16,7 @@
     "db:migrate:local": "wrangler d1 migrations apply artist-portfolio --local",
     "create-admin": "node scripts/create-admin.mjs",
     "deploy": "bash scripts/deploy.sh",
-    "deploy:ci": "wrangler d1 migrations apply artist-portfolio --remote && wrangler deploy"
+    "deploy:ci": "bash scripts/deploy-ci.sh"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",

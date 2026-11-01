@@ -1,5 +1,9 @@
 // Cloudflare Worker 설정. 웹 화면(정적 파일), API(/api/*), 공개 미디어(/media/*)를 하나의 Worker가 맡는다.
-// 처음 배포하기 전에 database_id(00000000-...)와 PUBLIC_ORIGIN(example.com)을 실제 값으로 바꾼다.
+// 계정마다 다른 값은 이 파일에 적지 않는다. 고칠 것 없이 Cloudflare 대시보드에서 GitHub만 연결하면 된다.
+// - D1, R2: ID를 적지 않았다. 첫 배포 때 wrangler가 아래 이름으로 찾고, 없으면 만들어서 연결한다.
+// - PUBLIC_ORIGIN(사이트 주소): 대시보드 Worker → Settings → Variables and Secrets에서 넣는다 (keep_vars로 배포해도 유지).
+// - APP_SECRET_KEY: 대시보드에서 Secret으로 넣는다.
+// 대시보드에서 바인딩(D1, R2)을 바꾸면 다음 배포 때 이 파일 내용으로 되돌아간다. 바인딩은 이 파일에서만 바꾼다.
 // 순서와 자동 배포 설정은 docs/cloudflare-deploy-guide.html 참고.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -18,7 +22,7 @@
     "run_worker_first": ["/api/*", "/media/*"]
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "artist-portfolio", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "artist-portfolio", "migrations_dir": "migrations" }
   ],
   "r2_buckets": [
     { "binding": "MEDIA_ORIGINALS", "bucket_name": "artist-originals" },
@@ -28,7 +32,6 @@
   // 매일 18:00 UTC = 03:00 KST: 만료된 업로드, 세션, 로그인 기록 정리
   "triggers": { "crons": ["0 18 * * *"] },
   "vars": {
-    "PUBLIC_ORIGIN": "https://example.com",
     "SESSION_COOKIE_SECURE": "true",
     "MAX_FILE_BYTES": "5368709120",
     "MAX_IMAGE_BYTES": "20971520",
@@ -38,6 +41,8 @@
     "LOGIN_MAX_ATTEMPTS": "5",
     "LOGIN_WINDOW_MINUTES": "15"
   },
+  // 대시보드에서 넣은 PUBLIC_ORIGIN을 배포 때 지우지 않는다 (모든 환경에 적용, env 안에는 못 넣는다)
+  "keep_vars": true,
   "observability": { "enabled": true },
   "env": {
     // 리허설용. Worker 이름은 artist-portfolio-staging, 주소는 https://artist-portfolio-staging.<계정>.workers.dev
@@ -45,7 +50,7 @@
     "staging": {
       "workers_dev": true,
       "d1_databases": [
-        { "binding": "DB", "database_name": "artist-portfolio-staging", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+        { "binding": "DB", "database_name": "artist-portfolio-staging", "migrations_dir": "migrations" }
       ],
       "r2_buckets": [
         { "binding": "MEDIA_ORIGINALS", "bucket_name": "artist-originals-staging" },
@@ -54,7 +59,6 @@
       "images": { "binding": "IMAGES" },
       "triggers": { "crons": ["0 18 * * *"] },
       "vars": {
-        "PUBLIC_ORIGIN": "https://artist-portfolio-staging.example.workers.dev",
         "SESSION_COOKIE_SECURE": "true",
         "MAX_FILE_BYTES": "5368709120",
         "MAX_IMAGE_BYTES": "20971520",

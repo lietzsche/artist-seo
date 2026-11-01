@@ -41,7 +41,7 @@
    ```bash
    cd apps/edge
    # 운영
-   npx wrangler d1 create artist-portfolio --location apac   # 출력된 database_id를 wrangler.jsonc에 넣는다
+   npx wrangler d1 create artist-portfolio --location apac   # (구현: ID를 적지 않는다. 14절 "계정별 값")
    npx wrangler r2 bucket create artist-originals
    npx wrangler r2 bucket create artist-public
    npx wrangler secret put APP_SECRET_KEY                    # 32자 이상 난수 (openssl rand -hex 32)
@@ -550,7 +550,7 @@ npx wrangler deploy "${ENV_ARGS[@]}"
 - 문제가 생기면 코드는 `npx wrangler rollback`으로, DB는 출력된 bookmark로 `wrangler d1 time-travel restore`로 되돌린다.
 - 배포 후 `curl -fsS https://<도메인>/api/v1/health/ready`로 확인한다.
 - 프론트는 API와 같은 도메인이라 `VITE_API_BASE_URL`, `VITE_MEDIA_BASE_URL`을 지정하지 않는다.
-- git push 자동 배포는 GitHub Actions 대신 Cloudflare **Workers Builds**(Git 연결)를 쓴다. 빌드 명령 `npm run build:web`, 배포 명령 `npm run deploy:ci`(마이그레이션 후 배포), 루트 디렉터리 `apps/edge`. 기본 빌드 토큰에는 D1 권한이 없어 D1 Edit을 넣은 토큰을 따로 만든다. 절차는 [cloudflare-deploy-guide.html](cloudflare-deploy-guide.html).
+- git push 자동 배포는 GitHub Actions 대신 Cloudflare **Workers Builds**(Git 연결)를 쓴다. 빌드 명령 `npm run build:web`, 배포 명령 `npm run deploy:ci`(마이그레이션 후 배포, 첫 배포만 배포 후 마이그레이션. 14절), 루트 디렉터리 `apps/edge`. 기본 빌드 토큰에는 D1 권한이 없어 D1 Edit을 넣은 토큰을 따로 만든다. 절차는 [cloudflare-deploy-guide.html](cloudflare-deploy-guide.html).
 
 ## 9. 사전 시험 (구현 전에 한다)
 
@@ -641,6 +641,8 @@ npx wrangler deploy "${ENV_ARGS[@]}"
 | 서버 현황 | `storage`에 `max_image_bytes` 추가, `disk_free_bytes`, `min_free_bytes` 제거 | |
 | Preview 빌드 | 끈다 | 미리보기 버전도 운영 D1·R2를 쓴다 |
 | compatibility_date | `2026-10-23` | 로컬 workerd가 지원하는 최신 날짜 이하여야 테스트가 돈다 |
+| 계정별 값 | `wrangler.jsonc`에 D1 `database_id`와 `PUBLIC_ORIGIN`을 적지 않는다. D1·R2는 Wrangler 자동 생성(4.45+, 기본 켜짐)으로 첫 배포 때 `database_name`·`bucket_name`으로 찾거나 만든다. `PUBLIC_ORIGIN`은 대시보드 Variables(Text)에 넣고 `"keep_vars": true`로 유지. 비어 있으면 Origin 검사가 "PUBLIC_ORIGIN이 설정되지 않았습니다" 403 | 소스 수정 없이 대시보드에서 GitHub 연결만으로 배포할 수 있게. D1 위치를 아시아로 정하려면 같은 이름으로 대시보드에서 미리 만든다 |
+| 배포 순서 (`scripts/deploy-ci.sh`) | D1이 있으면 마이그레이션 → 배포(8.4와 같음). 없으면(첫 배포) 배포(D1·R2 생성) → 마이그레이션. `d1 info`의 "Couldn't find"일 때만 첫 배포로 보고 다른 오류는 멈춘다 | 첫 배포 전에는 마이그레이션할 DB가 없다 |
 
 남은 확인(배포 후, S2·S6): 투명 PNG를 JPEG로 만들 때 흰 배경이 되는지(로컬 Images는 저충실도라 `background`를 무시하고 검정으로 채운다. 지금 화면은 WebP 파생본만 쓰고 JPEG 파생본은 쓰지 않아 영향이 작지만 확인한다), EXIF 회전과 색 프로필, 결과 파일에 GPS가 없는지, iOS Safari에서 큰 MP4 탐색.
 

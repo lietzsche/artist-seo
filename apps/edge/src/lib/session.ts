@@ -23,7 +23,11 @@ export const requireAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
 
 export function checkOrigin(c: Context<AppEnv>) {
   const origin = c.req.header("Origin");
-  if (origin && origin.replace(/\/+$/, "") !== settings(c.env).publicOrigin) throw new HttpError(403, "허용되지 않은 Origin입니다");
+  if (!origin) return;
+  const allowed = settings(c.env).publicOrigin;
+  // 사이트 주소는 Cloudflare 대시보드의 Variables에서 넣는다. 비어 있으면 원인을 바로 알 수 있게 알려 준다
+  if (!allowed) throw new HttpError(403, "PUBLIC_ORIGIN이 설정되지 않았습니다. Cloudflare 대시보드 Worker 설정의 Variables에 사이트 주소를 넣어 주세요");
+  if (origin.replace(/\/+$/, "") !== allowed) throw new HttpError(403, "허용되지 않은 Origin입니다");
 }
 
 /** 상태를 바꾸는 관리자 API: 세션 + Origin + CSRF 토큰 */

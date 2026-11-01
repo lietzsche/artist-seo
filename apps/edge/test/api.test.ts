@@ -1,7 +1,9 @@
+import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { hashPassword, verifyPassword } from "../src/lib/password";
-import { Client, createArtwork, json, resetAll } from "./helpers";
+import worker from "../src/index";
+import { Client, ORIGIN, createArtwork, json, resetAll, testEnv } from "./helpers";
 
 beforeEach(resetAll);
 
@@ -54,6 +56,20 @@ describe("인증", () => {
     const response = await client.fetch("/api/v1/auth/setup", { method: "POST", json: { email: "owner@example.com", password: "very-safe-password" }, headers: { Origin: "https://evil.example" } });
     expect(response.status).toBe(403);
     expect(await json(await client.get("/api/v1/auth/setup"))).toEqual({ needs_setup: true });
+  });
+
+  it("PUBLIC_ORIGIN을 아직 넣지 않았으면 이유를 알려 주고 거절한다", async () => {
+    const noOrigin = new Proxy(testEnv, { get: (target, key) => (key === "PUBLIC_ORIGIN" ? undefined : Reflect.get(target, key)) });
+    const ctx = createExecutionContext();
+    const request = new Request(`${ORIGIN}/api/v1/auth/setup`, {
+      method: "POST",
+      headers: { Origin: ORIGIN, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "owner@example.com", password: "very-safe-password" }),
+    });
+    const response = await worker.fetch(request as Request<unknown, IncomingRequestCfProperties>, noOrigin, ctx);
+    await waitOnExecutionContext(ctx);
+    expect(response.status).toBe(403);
+    expect((await json(response)).detail).toContain("PUBLIC_ORIGIN");
   });
 
   it("CSRF가 없으면 작품을 만들 수 없다", async () => {
