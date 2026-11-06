@@ -75,6 +75,46 @@ describe("업로드", () => {
     expect((await client.get(`/api/v1/media/${result.media_id}/original`)).status).toBe(200);
   });
 
+  it("공개 미디어는 한 번 보낸 뒤 캐시에서 응답한다 (Range·If-None-Match 포함)", async () => {
+    const client = new Client();
+    const key = `cache-${crypto.randomUUID()}/playback.mp4`;
+    const content = new Uint8Array(4096).map((_, i) => i % 251);
+    await env.MEDIA_PUBLIC.put(key, content, { httpMetadata: { contentType: "video/mp4" } });
+
+    // 영상 재생은 Range로 시작한다: 첫 요청은 R2에서 보내고, 뒤에서 파일 전체를 캐시에 넣는다
+    const first = await client.get(`/media/${key}`, { Range: "bytes=0-1" });
+    expect(first.status).toBe(206);
+    expect(first.headers.get("X-Media-Cache")).toBe("miss");
+    expect(new Uint8Array(await first.arrayBuffer())).toEqual(content.slice(0, 2));
+
+    const ranged = await client.get(`/media/${key}`, { Range: "bytes=100-199" });
+    expect(ranged.status).toBe(206);
+    expect(ranged.headers.get("X-Media-Cache")).toBe("hit");
+    expect(ranged.headers.get("Content-Range")).toBe(`bytes 100-199/${content.byteLength}`);
+    expect(new Uint8Array(await ranged.arrayBuffer())).toEqual(content.slice(100, 200));
+
+    const full = await client.get(`/media/${key}`);
+    expect(full.status).toBe(200);
+    expect(full.headers.get("X-Media-Cache")).toBe("hit");
+    expect(full.headers.get("Content-Type")).toBe("video/mp4");
+    expect(full.headers.get("Accept-Ranges")).toBe("bytes");
+    expect(full.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
+    expect(new Uint8Array(await full.arrayBuffer())).toEqual(content);
+
+    const etag = full.headers.get("ETag")!;
+    expect((await client.get(`/media/${key}`, { "If-None-Match": etag })).status).toBe(304);
+  });
+
+  it("범위 없이 받은 공개 파일도 캐시에 남는다", async () => {
+    const client = new Client();
+    const key = `cache-${crypto.randomUUID()}/poster.jpg`;
+    await env.MEDIA_PUBLIC.put(key, fakeJpeg(512), { httpMetadata: { contentType: "image/jpeg" } });
+    expect((await client.get(`/media/${key}`)).headers.get("X-Media-Cache")).toBe("miss");
+    const again = await client.get(`/media/${key}`);
+    expect(again.headers.get("X-Media-Cache")).toBe("hit");
+    expect((await again.arrayBuffer()).byteLength).toBe(512);
+  });
+
   it("작은 이미지는 원본 폭에서 멈춘다", async () => {
     const { client, work } = await admin();
     images.width = 1200;

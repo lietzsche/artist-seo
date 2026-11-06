@@ -49,20 +49,21 @@ export function MediaSlider({ media, title }: { media: Media[]; title: string })
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const item = (m: Media) => m.media_type === "video"
+  // 지금 보이는 영상은 재생을 누르기 전부터 받아 둔다. 다른 칸의 영상은 길이·크기 정보만 받는다
+  const item = (m: Media, current: boolean) => m.media_type === "video"
     ? <>
-        <video controls preload="metadata" playsInline poster={mediaUrl(m.poster_key)} width={m.width || undefined} height={m.height || undefined}>
+        <video controls preload={current ? "auto" : "metadata"} playsInline poster={mediaUrl(m.poster_key)} width={m.width || undefined} height={m.height || undefined}>
           <source src={mediaUrl(m.public_key)} type={m.content_type || "video/mp4"} />
         </video>
         {m.hdr_to_sdr && <p className="media-note">{t.hdrNote}</p>}
       </>
     : <img className="fade-in" src={mediaUrl(m.public_key)} alt={t.imageAlt(title)} width={m.width || 1600} height={m.height || 1200} />;
 
-  if (!many) return <div className="wall">{media[0] ? item(media[0]) : <div className="placeholder">{t.imagePending}</div>}</div>;
+  if (!many) return <div className="wall">{media[0] ? item(media[0], true) : <div className="placeholder">{t.imagePending}</div>}</div>;
 
   return <div className="wall slider" role="region" aria-roledescription="carousel" aria-label={t.mediaList}>
     <div className="slides" ref={track} style={{ "--ratio": Math.min(Math.max(tallest, 0.5), 1.6) } as React.CSSProperties}>
-      {media.map((m, i) => <div key={m.id} className="slide" data-index={i} role="group" aria-roledescription="slide" aria-label={`${i + 1} / ${media.length}`}>{item(m)}</div>)}
+      {media.map((m, i) => <div key={m.id} className="slide" data-index={i} role="group" aria-roledescription="slide" aria-label={`${i + 1} / ${media.length}`}>{item(m, i === index)}</div>)}
     </div>
     <div className="slider-bar">
       <button type="button" className="slider-arrow" onClick={() => go(index - 1)} disabled={index === 0} aria-label={t.prevMedia}>‹</button>
