@@ -23,6 +23,7 @@ const en = {
   sentTitle: "Message sent", failTitle: "Not sent", ok: "OK", language: "Language",
   install: "Install app", iosInstall: "To install: tap Share, then “Add to Home Screen”.",
   pages: "Pages", prevPage: "Previous page", nextPage: "Next page",
+  mediaList: "Images of this work", prevMedia: "Previous image", nextMedia: "Next image",
   payment: "Bank transfer", bank: "Bank", account: "Account no.", holder: "Account holder", copy: "Copy", copied: "Copied",
   paymentDefault: "Please make a transfer only after your purchase has been confirmed with the artist.",
 };
@@ -47,6 +48,7 @@ const ko: Dict = {
   sentTitle: "문의 접수 완료", failTitle: "보내지 못했습니다", ok: "확인", language: "언어",
   install: "앱으로 설치", iosInstall: "설치하려면 공유 버튼을 누른 뒤 ‘홈 화면에 추가’를 고르세요.",
   pages: "페이지", prevPage: "이전 페이지", nextPage: "다음 페이지",
+  mediaList: "작품 사진", prevMedia: "이전 사진", nextMedia: "다음 사진",
   payment: "입금 계좌", bank: "은행", account: "계좌번호", holder: "예금주", copy: "복사", copied: "복사됨",
   paymentDefault: "작품 구매가 확정된 뒤에 입금해 주세요.",
 };

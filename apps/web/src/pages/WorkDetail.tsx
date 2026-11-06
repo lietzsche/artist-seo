@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { api, Artwork, mediaUrl } from "../lib/api";
+import { api, Artwork } from "../lib/api";
+import { MediaSlider } from "../components/MediaSlider";
 import { useLang } from "../lib/i18n";
 
 export function WorkDetail() {
@@ -11,21 +12,13 @@ export function WorkDetail() {
   if (query.isError || !query.data) return <div className="container state" role="alert"><p>{t.workNotFound}</p><Link className="link-arrow" to={to("/works")}>{t.backToWorks}</Link></div>;
   const work = query.data;
   const w = localize(work);
-  const media = work.media.filter(m => m.public_key);
+  // 목록 카드에 쓰인 대표 사진부터 보여준다 (나머지는 올린 순서)
+  const ready = work.media.filter(m => m.public_key);
+  const media = [...ready.filter(m => m.is_primary), ...ready.filter(m => !m.is_primary)];
   return <div className="container">
     <Link className="back" to={to("/works")}>{t.backLink}</Link>
     <article className="detail">
-      <div className="wall">
-        {media.map(m => m.media_type === "video"
-          ? <div key={m.id}>
-              <video controls preload="metadata" playsInline poster={mediaUrl(m.poster_key)} width={m.width || undefined} height={m.height || undefined}>
-                <source src={mediaUrl(m.public_key)} type="video/mp4" />
-              </video>
-              {m.hdr_to_sdr && <p className="media-note">{t.hdrNote}</p>}
-            </div>
-          : <img key={m.id} className="fade-in" src={mediaUrl(m.public_key)} alt={t.imageAlt(w.title)} width={m.width || 1600} height={m.height || 1200} />)}
-        {media.length === 0 && <div className="placeholder">{t.imagePending}</div>}
-      </div>
+      <MediaSlider media={media} title={w.title} />
       <aside className="tombstone">
         <div>
           <h1>{w.title}</h1>

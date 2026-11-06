@@ -152,6 +152,22 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
 .wall video { width: auto; background: transparent; }
 .wall .placeholder { aspect-ratio: 4 / 3; display: grid; place-items: center; color: var(--muted); }
 .media-note { margin: .6rem 0 0; font-size: .78rem; color: var(--muted); text-align: center; }
+/* 사진이 여러 장이면 한 장씩 넘긴다. 칸 높이를 고정해 넘겨도 아래 내용이 움직이지 않는다 */
+.wall.slider { padding-inline: 0; gap: 1.25rem; }
+.slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+.slides::-webkit-scrollbar { display: none; }
+.slide { flex: 0 0 100%; aspect-ratio: 1 / var(--ratio, 1); max-height: min(78vh, 900px); scroll-snap-align: center; scroll-snap-stop: always; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-inline: clamp(1.5rem, 6vw, 6rem); }
+.slide img, .slide video { max-height: 100%; min-height: 0; object-fit: contain; }
+.slide video { max-height: calc(100% - 2rem); }
+.slider-bar { display: flex; justify-content: center; align-items: center; gap: 1rem; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.slider-arrow { background: none; border: 1px solid var(--line); color: var(--ink); width: 2.4rem; height: 2.4rem; border-radius: 50%; font-size: 1.1rem; line-height: 1; cursor: pointer; transition: border-color .25s; }
+.slider-arrow:hover:not(:disabled) { border-color: var(--accent); }
+.slider-arrow:disabled { opacity: .3; cursor: default; }
+@media (hover: none) { .slider-arrow { display: none; } }
+@media (max-width: 720px) {
+  .wall.slider { padding-block: 1.25rem 1rem; }
+  .slide { max-height: 70vh; padding-inline: 1rem; }
+}
 .tombstone { position: sticky; top: 100px; display: grid; gap: 1.5rem; }
 .tombstone h1 { margin: 0; font-family: var(--serif); font-size: clamp(2.1rem, 3.2vw, 3rem); font-weight: 400; letter-spacing: 0; line-height: 1.12; }
 .tombstone .year { color: var(--muted); }
