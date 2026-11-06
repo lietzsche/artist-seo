@@ -307,7 +307,7 @@ npm run create-admin -- 내이메일@example.com</code></pre>
       <li>전체 점검은 <a href="test-scenarios.html">수동 테스트 시나리오</a>를 따릅니다.</li>
     </ul>
   </div>
-  <p>문제없으면 집 PC의 Docker 스택은 <code>docker compose stop</code>으로 <b>중지만</b> 해 둡니다(지우지 않음). 1주일 정도 지켜본 뒤 정리합니다.</p>
+  <p>문제없으면 집 PC의 Docker 스택은 <code>docker compose stop</code>으로 <b>중지만</b> 해 둡니다(지우지 않음). 1주일 정도 지켜본 뒤 정리합니다. 저장소의 Docker 구성(<code>compose.yaml</code>, <code>apps/api</code> 등)은 2026-11-06에 지웠으므로, 다시 필요하면 커밋 <code>c288cdd</code>에서 꺼냅니다.</p>
 </section>
 
 <section id="protect">
@@ -364,7 +364,7 @@ npm run build:web                   # 화면 빌드</code></pre>
       <tr><th>대상</th><th>방법</th></tr>
       <tr><td>코드</td><td><span class="ui">Deployments</span>에서 이전 버전의 <span class="ui">⋯</span> → <span class="ui">Rollback</span>. 또는 <code>npx wrangler rollback</code>. 그다음 원인 커밋을 <code>git revert</code>로 되돌리고 push합니다(안 그러면 다음 push 때 다시 배포됩니다)</td></tr>
       <tr><td>DB</td><td><code>npx wrangler d1 time-travel info artist-portfolio --timestamp 2026-11-01T03:00:00Z</code>로 시점의 bookmark를 얻고 <code>npx wrangler d1 time-travel restore artist-portfolio --bookmark &lt;값&gt;</code>. 그 시점 이후 데이터(새 문의 등)는 사라집니다</td></tr>
-      <tr><td>도메인 전체</td><td>최악의 경우: Worker의 도메인을 지우고 Tunnel의 Public Hostname을 다시 만들고 <code>docker compose start</code>. 그 사이 새 사이트에 들어온 문의와 업로드는 옮겨지지 않습니다</td></tr>
+      <tr><td>도메인 전체</td><td>최악의 경우: Worker의 도메인을 지우고 Tunnel의 Public Hostname을 다시 만들고 집 PC에 남겨 둔 Docker 스택을 <code>docker compose start</code>(저장소에서는 지웠으니 커밋 <code>c288cdd</code> 기준 폴더에서). 그 사이 새 사이트에 들어온 문의와 업로드는 옮겨지지 않습니다</td></tr>
     </table></div>
   </div>
 </section>

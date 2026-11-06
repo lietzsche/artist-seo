@@ -1,20 +1,9 @@
 .env
-.venv/
-__pycache__/
-.pytest_cache/
-.mypy_cache/
 node_modules/
 dist/
 *.tsbuildinfo
 playwright-report/
 test-results/
-storage/*
-!storage/.gitkeep
-!storage/originals/.gitkeep
-!storage/public/.gitkeep
-!storage/tmp/.gitkeep
-
-backups/
 
 # Cloudflare Worker (apps/edge): 개발용 비밀 값과 로컬 D1/R2
 .dev.vars

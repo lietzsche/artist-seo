@@ -1,6 +1,6 @@
 # apps/edge: Cloudflare Worker (Hono + D1 + R2)
 
-웹 화면(`apps/web` 빌드 결과), API(`/api/v1/*`), 공개 미디어(`/media/*`)를 Worker 하나로 서빙한다. 기존 `apps/api`(FastAPI)와 같은 API 경로와 JSON 모양을 유지한다.
+웹 화면(`apps/web` 빌드 결과), API(`/api/v1/*`), 공개 미디어(`/media/*`)를 Worker 하나로 서빙한다. 예전 FastAPI 구현(`apps/api`, 커밋 `c288cdd`에서 삭제 전 상태를 볼 수 있음)과 같은 API 경로와 JSON 모양을 유지한다.
 
 - 구현 명세: [docs/cloudflare-migration-guide.md](../../docs/cloudflare-migration-guide.md)
 - 배포와 git push 자동 배포 설정: [docs/cloudflare-deploy-guide.html](../../docs/cloudflare-deploy-guide.html)

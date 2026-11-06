@@ -212,18 +212,18 @@ export function Guide() {
 
         <section id="ops">
           <h2>운영자용: 서버 관리</h2>
-          <p>사이트를 돌리는 컴퓨터(서버)에서 터미널로 하는 일입니다. 모든 명령은 프로젝트 폴더(<code>artist-seo</code>)에서 실행합니다.</p>
+          <p>사이트는 Cloudflare에서 돌아갑니다. 아래 명령은 내 PC의 프로젝트 폴더 안 <code>apps/edge</code>에서 실행하며, 먼저 <code>npx wrangler login</code>으로 Cloudflare에 로그인해 두어야 합니다.</p>
           <table className="guide-table">
             <tbody>
-              <tr><th>코드 반영(배포)</th><td><code>./scripts/deploy.sh</code> — 설정 점검 → DB 백업 → 빌드·재시작 → 접속 확인까지 한 번에 합니다. GitHub의 최신 코드를 받아서 배포하려면 <code>./scripts/deploy.sh --pull</code>.</td></tr>
-              <tr><th>백업</th><td>배포할 때마다 DB가 <code>backups/</code> 폴더에 <code>db-날짜.sql.gz</code>로 저장되고 최근 10개가 남습니다. 사진·영상 파일은 DB 백업에 들어가지 않고 Docker 볼륨(<code>artist_originals</code>, <code>artist_public</code>)에 있습니다.</td></tr>
-              <tr><th>비밀번호 재설정</th><td><code>.env</code>의 <code>ADMIN_EMAIL</code>에 관리자 이메일, <code>ADMIN_PASSWORD</code>에 새 비밀번호(10자 이상)를 넣고 <code>./scripts/deploy.sh</code>를 실행하면 그 비밀번호로 바뀝니다.</td></tr>
-              <tr><th>휴지통 작품 되살리기</th><td><code>{`docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`}</code>로 DB에 들어가 <code>{`UPDATE artworks SET deleted_at = NULL WHERE title = '작품 제목';`}</code>를 실행합니다. 되살린 작품은 비공개 상태이니 관리 화면에서 다시 공개하세요.</td></tr>
-              <tr><th>상태·로그 보기</th><td><code>docker compose --profile tunnel ps</code> (실행 상태), <code>docker compose logs -f api</code> (서버 기록), <code>docker compose logs cloudflared</code> (도메인 연결)</td></tr>
-              <tr><th>도메인이 안 열릴 때</th><td>Cloudflare 대시보드의 터널 경로가 <code>http://gateway:8080</code>인지, <code>.env</code>의 <code>PUBLIC_ORIGIN</code>이 실제 주소(<code>https://…</code>)와 같은지 확인합니다. 자세한 내용은 저장소의 <code>docs/deploy-cloudflare.md</code>에 있습니다.</td></tr>
+              <tr><th>코드 반영(배포)</th><td>GitHub에 <code>git push</code>하면 Cloudflare가 자동으로 빌드하고 배포합니다(DB 변경 포함). 진행 상황은 Cloudflare 대시보드의 Worker → <i>Deployments</i>에서 봅니다.</td></tr>
+              <tr><th>백업</th><td>DB(D1)는 Cloudflare가 시점 복원(Time Travel)을 자동으로 제공합니다. 되돌릴 때는 <code>npx wrangler d1 time-travel restore artist-portfolio --timestamp=시각</code>을 씁니다. 사진·영상은 R2 버킷(<code>artist-originals</code>, <code>artist-public</code>)에 있습니다.</td></tr>
+              <tr><th>비밀번호 재설정</th><td><code>npm run create-admin -- 관리자이메일</code>을 실행하고 새 비밀번호(10자 이상)를 두 번 입력합니다. 기존 로그인은 모두 끊깁니다.</td></tr>
+              <tr><th>휴지통 작품 되살리기</th><td><code>{`npx wrangler d1 execute artist-portfolio --remote --command "UPDATE artworks SET deleted_at = NULL WHERE title = '작품 제목';"`}</code>를 실행합니다. 되살린 작품은 비공개 상태이니 관리 화면에서 다시 공개하세요.</td></tr>
+              <tr><th>상태·로그 보기</th><td>관리 화면의 <i>서버 현황</i> 탭, Cloudflare 대시보드의 Worker → <i>Observability</i>(서버 기록), 또는 <code>npx wrangler tail</code>(실시간 기록)</td></tr>
+              <tr><th>도메인이 안 열릴 때</th><td>Worker → <i>Settings → Domains &amp; Routes</i>에 도메인이 연결되어 있는지, <i>Variables and Secrets</i>의 <code>PUBLIC_ORIGIN</code>이 실제 주소(<code>https://…</code>)와 같은지 확인합니다. 자세한 내용은 저장소의 <code>docs/cloudflare-deploy-guide.html</code>에 있습니다.</td></tr>
             </tbody>
           </table>
-          <p className="guide-note"><code>docker compose down -v</code>처럼 <code>-v</code>를 붙이면 <b>DB와 업로드한 사진·영상이 모두 지워집니다.</b> 운영 중에는 절대 쓰지 마세요. 컨테이너만 멈추려면 <code>-v</code> 없이 <code>docker compose --profile tunnel down</code>을 씁니다.</p>
+          <p className="guide-note">대시보드에서 D1 데이터베이스나 R2 버킷을 지우면 <b>작품 정보와 올린 사진·영상이 모두 사라집니다.</b> 운영 중에는 절대 지우지 마세요.</p>
         </section>
       </div>
     </div>

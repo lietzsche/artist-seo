@@ -6,6 +6,8 @@
 
 > **구현 현황 (2026-11-01, `cloudflare-migration` 브랜치)**: 이 문서대로 `apps/edge`(Hono + D1 + R2)와 프론트 수정(7절)을 구현했다. Worker 테스트 32개가 로컬 D1·R2에서 통과하고, `wrangler dev`로 화면, 로그인, 이미지 업로드와 파생본 생성(로컬 Images), 11MB 영상의 3청크 업로드, SHA-256 일치, Range 재생, 원본 다운로드를 확인했다. 아직 실제 Cloudflare 계정에는 배포하지 않았다. 배포와 git push 자동 배포 설정은 [cloudflare-deploy-guide.html](cloudflare-deploy-guide.html)을 따른다. 구현하면서 정한 것과 달라진 점, 사전 시험(9절) 결과는 14절에 적었다.
 
+> **정리 (2026-11-06)**: M8을 마쳤다. 이 문서에 나오는 `apps/api`, `compose.yaml`, `infra/`, 루트 `scripts/`, `docs/deploy-cloudflare.md`는 저장소에서 지웠고, 커밋 `c288cdd` 이전 기록에서 볼 수 있다.
+
 ## 0. 원칙
 
 - 이전 작업이 끝나 전환하기 전까지는 `apps/api`, `compose.yaml`, `infra/`를 건드리지 않는다. 새 코드는 `apps/edge`에만 만든다.
@@ -613,7 +615,7 @@ npx wrangler deploy "${ENV_ARGS[@]}"
 | M5 | 프론트 수정(7절), `docs/test-scenarios.html` 전체 점검, 11절 테스트 통과 | 시나리오와 테스트 모두 통과 |
 | M6 | 운영 설정: 시크릿, Cron, WAF 속도 제한, 결제 알림, Time Travel 확인. 스테이징(`deploy.sh staging`, 별도 D1과 버킷)에서 리허설. 원본 백업 방법 확정. 개인정보 고지 결정(13절) 반영 | 스테이징에서 전체 시나리오 통과 |
 | M7 | 컷오버: 관리자 생성 → Tunnel의 Public Hostname과 DNS 레코드 삭제 → 커스텀 도메인 연결 → 확인. 기존 Docker 스택은 중지만 하고 보관 | 도메인에서 전체 시나리오 통과 |
-| M8 | 1주 관찰 후 정리: `apps/api`, `compose.yaml`, `infra/`, `scripts/deploy.sh` 제거, `deploy-cloudflare.md`와 README 갱신 | 문서가 새 구성과 일치 |
+| M8 | 1주 관찰 후 정리: `apps/api`, `compose.yaml`, `infra/`, `scripts/deploy.sh` 제거, `deploy-cloudflare.md`와 README 갱신 (2026-11-06 완료) | 문서가 새 구성과 일치 |
 
 백업은 두 곳이다. D1은 Time Travel로 30일 안의 시점으로 복원할 수 있다(유료 플랜). R2에는 스냅샷 기능이 없으므로 `rclone sync`로 주기적으로 다른 곳(개인 PC, 외장 디스크 등)에 복사해 둔다. 원본 이미지는 이 사이트에서 유일한 사본일 수 있어 M6에서 방법을 확정한다.
 

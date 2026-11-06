@@ -2,6 +2,8 @@
 
 마지막 갱신: 2026-10-30
 
+> **2026-11-06**: 운영을 Cloudflare Worker(`apps/edge`)로 옮기고 Docker 구성(`apps/api`, `compose.yaml`, `infra/`, `scripts/`)을 저장소에서 지웠다. 아래 내용은 Docker 구성 때의 기록이며, 언급된 파일은 커밋 `c288cdd` 이전 기록에서 볼 수 있다. 같은 날 작품 페이지의 판매 상태·시리즈·연도 필터를 없애고 12점씩 번호 페이지로 바꿨다.
+
 ## 완료
 
 - 모노레포, Compose gateway/api/worker/db, 영속 볼륨, 선택적 cloudflared profile
