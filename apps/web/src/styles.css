@@ -133,6 +133,10 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
 /* 작품 목록 페이지 */
 .page-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 1.5rem; padding-block: clamp(3rem, 8vh, 5rem) 1.5rem; margin-bottom: clamp(2.5rem, 6vh, 4rem); border-bottom: 1px solid var(--line); }
 .page-head .count { color: var(--muted); font-size: .9rem; }
+/* 다음 페이지를 받는 동안 지금 목록을 살짝 흐리게 한다 */
+.works-grid { transition: opacity .25s var(--ease); }
+.works-grid.is-loading { opacity: .45; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .works-grid { transition: none; } }
 .pager { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .35rem; margin-top: clamp(4rem, 10vh, 7rem); font-size: .9rem; color: var(--muted); }
 .pager a, .pager span { min-width: 2.4rem; padding: .45rem .6rem; text-align: center; border-bottom: 1px solid transparent; }
 .pager a:hover { color: var(--ink); }
