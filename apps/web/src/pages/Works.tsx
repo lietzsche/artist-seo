@@ -1,70 +1,64 @@
-import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
-import { api, Artwork, Series } from "../lib/api";
+import { useEffect } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Link, useSearchParams } from "react-router-dom";
+import { api, Artwork } from "../lib/api";
 import { useLang } from "../lib/i18n";
 import { ArtworkCard } from "../components/ArtworkCard";
 
-const STATUSES = ["", "available", "sold", "unavailable"] as const;
+// 3열·2열 그리드 모두 줄이 딱 맞아떨어지는 수
+const PAGE_SIZE = 12;
+
+/** 보여줄 페이지 번호. 처음·끝·현재 앞뒤만 두고 나머지는 "…"로 줄인다 (1 … 4 5 6 … 12) */
+function pageItems(current: number, last: number): (number | "gap")[] {
+  const keep = new Set([1, last, current - 1, current, current + 1]);
+  const items: (number | "gap")[] = [];
+  for (let n = 1; n <= last; n++) {
+    if (keep.has(n)) items.push(n);
+    else if (items[items.length - 1] !== "gap") items.push("gap");
+  }
+  return items;
+}
 
 export function Works() {
-  const { t, seriesName } = useLang();
-  // 고른 조건은 주소(?series=…&year=…)에 남겨, 새로고침하거나 링크를 공유해도 같은 목록이 보이게 한다
+  const { t } = useLang();
+  // 페이지는 주소(?page=2)에 남겨, 새로고침하거나 링크를 공유해도 같은 페이지가 보이게 한다
   const [params, setParams] = useSearchParams();
-  const status = params.get("status") ?? "";
-  const seriesId = params.get("series") ?? "";
-  const year = params.get("year") ?? "";
-  const setFilter = (key: string, value: string) => setParams(prev => {
-    const next = new URLSearchParams(prev);
-    if (value) next.set(key, value); else next.delete(key);
-    return next;
-  }, { replace: true });
+  const raw = Number(params.get("page") ?? 1);
+  const page = Number.isInteger(raw) && raw >= 1 ? raw : 1;
 
-  const series = useQuery({ queryKey: ["series"], queryFn: () => api<Series[]>("/series") });
-  const years = useQuery({ queryKey: ["work-years"], queryFn: () => api<number[]>("/artworks/years") });
   const query = useQuery({
-    queryKey: ["works", status, seriesId, year],
-    queryFn: () => {
-      const search = new URLSearchParams({ size: "50" });
-      if (status) search.set("sale_status", status);
-      if (seriesId) search.set("series_id", seriesId);
-      if (year) search.set("year", year);
-      return api<{ items: Artwork[]; total: number }>(`/artworks?${search}`);
-    },
+    queryKey: ["works", page],
+    queryFn: () => api<{ items: Artwork[]; total: number }>(`/artworks?page=${page}&size=${PAGE_SIZE}`),
+    placeholderData: keepPreviousData,
   });
-  const filtered = !!(status || seriesId || year);
+  const total = query.data?.total ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // 없는 페이지(?page=999)로 들어오면 마지막 페이지로 보낸다
+  useEffect(() => {
+    if (query.data && page > lastPage) setParams(lastPage > 1 ? { page: String(lastPage) } : {}, { replace: true });
+  }, [query.data, page, lastPage, setParams]);
+  useEffect(() => { window.scrollTo(0, 0); }, [page]);
+
+  const href = (n: number) => ({ search: n > 1 ? `?page=${n}` : "" });
 
   return <section className="container">
     <div className="page-head">
       <h1 className="display">{t.works}</h1>
-      {query.data && <span className="count">{t.count(query.data.total)}</span>}
-    </div>
-    <div className="toolbar">
-      <div className="chips" role="group" aria-label={t.saleStatus}>
-        {STATUSES.map(value => <button key={value} type="button" className="chip" aria-pressed={status === value} onClick={() => setFilter("status", value)}>{value ? t.sale[value] : t.all}</button>)}
-      </div>
-      <div className="filters">
-        {!!series.data?.length && (
-          <label className="select-inline">{t.series}
-            <select value={seriesId} onChange={e => setFilter("series", e.target.value)}>
-              <option value="">{t.all}</option>
-              {series.data.map(item => <option key={item.id} value={item.id}>{seriesName(item)}</option>)}
-            </select>
-          </label>
-        )}
-        {!!years.data?.length && (
-          <label className="select-inline">{t.year}
-            <select value={year} onChange={e => setFilter("year", e.target.value)}>
-              <option value="">{t.all}</option>
-              {years.data.map(item => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-        )}
-        {filtered && <button type="button" className="link-btn" onClick={() => setParams({}, { replace: true })}>{t.clearFilters}</button>}
-      </div>
+      {query.data && <span className="count">{t.count(total)}</span>}
     </div>
     {query.isPending && <p className="state" role="status">{t.loadingWorks}</p>}
     {query.isError && <p className="state" role="alert">{t.loadFailed}</p>}
-    {query.data?.items.length === 0 && <p className="state">{t.noMatch}</p>}
+    {query.data?.items.length === 0 && page <= lastPage && <p className="state">{t.noWorks}</p>}
     <div className="works-grid">{query.data?.items.map(work => <ArtworkCard key={work.id} work={work} />)}</div>
+    {lastPage > 1 && (
+      <nav className="pager" aria-label={t.pages}>
+        {page > 1 ? <Link to={href(page - 1)} rel="prev" aria-label={t.prevPage}>‹</Link> : <span aria-hidden="true">‹</span>}
+        {pageItems(page, lastPage).map((item, i) => item === "gap"
+          ? <span key={`gap-${i}`} className="gap" aria-hidden="true">…</span>
+          : <Link key={item} to={href(item)} aria-current={item === page ? "page" : undefined}>{item}</Link>)}
+        {page < lastPage ? <Link to={href(page + 1)} rel="next" aria-label={t.nextPage}>›</Link> : <span aria-hidden="true">›</span>}
+      </nav>
+    )}
   </section>;
 }
