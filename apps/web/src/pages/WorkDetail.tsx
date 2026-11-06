@@ -1,13 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { api, Artwork } from "../lib/api";
+import { api, ApiError, Artwork } from "../lib/api";
 import { MediaSlider } from "../components/MediaSlider";
 import { useLang } from "../lib/i18n";
+import { usePageTitle } from "../lib/title";
 
 export function WorkDetail() {
   const { slug } = useParams();
   const { t, to, work: localize } = useLang();
-  const query = useQuery({ queryKey: ["work", slug], queryFn: () => api<Artwork>(`/artworks/${slug}`), enabled: !!slug });
+  // 없는 작품(404)은 다시 물어보지 않고 바로 안내한다. 연결 오류만 두 번까지 다시 시도한다
+  const query = useQuery({
+    queryKey: ["work", slug], queryFn: () => api<Artwork>(`/artworks/${slug}`), enabled: !!slug,
+    retry: (count, error) => !(error instanceof ApiError && error.status === 404) && count < 2,
+  });
+  usePageTitle(query.data ? localize(query.data).title : query.isError ? t.workNotFound.replace(/\.$/, "") : t.works);
   if (query.isPending) return <p className="container state" role="status">{t.loadingWorks}</p>;
   if (query.isError || !query.data) return <div className="container state" role="alert"><p>{t.workNotFound}</p><Link className="link-arrow" to={to("/works")}>{t.backToWorks}</Link></div>;
   const work = query.data;

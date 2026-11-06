@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, Artwork, coverOf, Exhibition, Profile } from "../lib/api";
 import { useLang } from "../lib/i18n";
+import { usePageTitle } from "../lib/title";
 import { ArtworkCard } from "../components/ArtworkCard";
 
 // 홈 아래 칸 작품 수: PC 3열·태블릿 2열 모두 줄이 딱 맞는다
@@ -11,6 +12,7 @@ const period = (e: Exhibition, tbd: string) => [e.start_date, e.end_date].filter
 
 export function Home() {
   const { t, to, work: localizeWork, profile: localizeProfile, exhibition: localizeExhibition } = useLang();
+  usePageTitle(null);
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
   const featured = useQuery({ queryKey: ["featured"], queryFn: () => api<{ items: Artwork[] }>("/artworks?featured=true&size=6") });
   const latest = useQuery({ queryKey: ["latest"], queryFn: () => api<{ items: Artwork[] }>("/artworks?size=12") });

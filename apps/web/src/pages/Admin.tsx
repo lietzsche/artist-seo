@@ -17,6 +17,7 @@ export function Admin() {
   const client = useQueryClient();
   const setup = useQuery({ queryKey: ["setup"], queryFn: () => api<{ needs_setup: boolean }>("/auth/setup"), staleTime: Infinity });
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/auth/me"), retry: false });
+  useEffect(() => { document.title = "사이트 관리"; }, []);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("works");
   // 탭에 새 문의 수를 보여주려고 로그인한 뒤 문의 목록을 미리 불러온다

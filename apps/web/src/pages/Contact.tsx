@@ -3,9 +3,11 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, Profile } from "../lib/api";
 import { useLang } from "../lib/i18n";
+import { usePageTitle } from "../lib/title";
 
 export function Contact() {
   const { lang, t, to, profile: localize } = useLang();
+  usePageTitle(t.contact);
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
   const [params] = useSearchParams();
   // 보내기 결과는 놓치지 않도록 화면 가운데 팝업으로 알린다

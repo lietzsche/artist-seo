@@ -91,6 +91,11 @@ button { font: inherit; color: inherit; }
 /* 내용이 짧은 페이지에서도 맨 아래 영역이 화면 바닥에 붙게 한다 */
 #root { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 #content { flex: 1 0 auto; }
+/* 없는 주소·오류 안내 */
+.notice-page { padding-block: clamp(4rem, 14vh, 9rem) 0; display: grid; gap: 1.25rem; justify-items: start; max-width: 40rem; }
+.notice-page h1, .notice-page p { margin: 0; }
+.notice-links { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; margin-top: 1rem; }
+button.link-arrow { background: none; border: 0; border-bottom: 1px solid currentColor; color: inherit; font: inherit; font-size: .9rem; padding: 0 0 2px; cursor: pointer; }
 .site-footer { margin-top: 8rem; border-top: 1px solid var(--line); }
 .site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding-block: 2.5rem 3rem; font-size: .8rem; color: var(--muted); }
 .site-footer nav { display: flex; gap: 1.5rem; }

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, Exhibition, Profile } from "../lib/api";
 import { useLang } from "../lib/i18n";
+import { usePageTitle } from "../lib/title";
 
 const lines = (text: string) => text.split("\n").map(line => line.trim()).filter(Boolean);
 // "2025 첫 개인전"처럼 연도로 시작하면 연도와 내용을 나눠 표시한다
@@ -8,6 +9,7 @@ const splitYear = (line: string) => { const m = line.match(/^(\d{4}(?:\s*[–-]\
 
 export function About() {
   const { lang, t, profile: localizeProfile, exhibition: localizeExhibition } = useLang();
+  usePageTitle(t.about);
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
   const exhibitions = useQuery({ queryKey: ["exhibitions"], queryFn: () => api<Exhibition[]>("/exhibitions") });
   const p = profile.data ? localizeProfile(profile.data) : null;

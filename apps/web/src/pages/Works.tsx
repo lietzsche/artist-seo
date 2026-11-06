@@ -3,6 +3,7 @@ import { keepPreviousData, QueryClient, useQuery, useQueryClient } from "@tansta
 import { Link, useSearchParams } from "react-router-dom";
 import { api, Artwork, coverOf } from "../lib/api";
 import { useLang } from "../lib/i18n";
+import { usePageTitle } from "../lib/title";
 import { ArtworkCard } from "../components/ArtworkCard";
 
 // 3열·2열 그리드 모두 줄이 딱 맞아떨어지는 수
@@ -42,6 +43,7 @@ function pageItems(current: number, last: number): (number | "gap")[] {
 
 export function Works() {
   const { t } = useLang();
+  usePageTitle(t.works);
   // 페이지는 주소(?page=2)에 남겨, 새로고침하거나 링크를 공유해도 같은 페이지가 보이게 한다
   const [params, setParams] = useSearchParams();
   const raw = Number(params.get("page") ?? 1);
