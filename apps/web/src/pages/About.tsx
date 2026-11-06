@@ -23,12 +23,12 @@ export function About() {
     <div className="about-body">
       <div className="bio">{p && (p.bio ? lines(p.bio).map((line, i) => <p key={i}>{line}</p>) : <p className="muted">{t.noBio}</p>)}</div>
       {cv.length > 0 && <div className="list-block"><h2>{t.cv}</h2><ul className="timeline">{cv.map((line, i) => { const [year, text] = splitYear(line); return <li key={i}><time>{year}</time><span>{text}</span></li>; })}</ul></div>}
-      <div className="list-block">
+      {/* 공개한 전시가 없으면 전시 칸을 통째로 숨긴다 */}
+      {(exhibitions.isPending || !!exhibitions.data?.length) && <div className="list-block">
         <h2>{t.exhibitions}</h2>
         {exhibitions.isPending && <p className="muted" role="status">{t.loadingExhibitions}</p>}
-        {exhibitions.data?.length === 0 && <p className="muted">{t.noExhibitions}</p>}
         {!!exhibitions.data?.length && <ul className="timeline">{exhibitions.data.map(item => { const e = localizeExhibition(item); const place = [e.venue, e.location].filter(Boolean).join(", "); return <li key={item.id}><time>{item.start_date?.slice(0, 4) || "—"}</time><span>{titled(e.title)}{place ? `, ${place}` : ""}</span></li>; })}</ul>}
-      </div>
+      </div>}
     </div>
   </section>;
 }

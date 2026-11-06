@@ -88,6 +88,9 @@ button { font: inherit; color: inherit; }
 .nav a { color: var(--muted); position: relative; padding: .4rem 0; transition: color .2s; }
 .nav a:hover, .nav a.active { color: var(--ink); }
 .nav a.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); }
+/* 내용이 짧은 페이지에서도 맨 아래 영역이 화면 바닥에 붙게 한다 */
+#root { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+#content { flex: 1 0 auto; }
 .site-footer { margin-top: 8rem; border-top: 1px solid var(--line); }
 .site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding-block: 2.5rem 3rem; font-size: .8rem; color: var(--muted); }
 .site-footer nav { display: flex; gap: 1.5rem; }

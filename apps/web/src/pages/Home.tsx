@@ -4,21 +4,28 @@ import { api, Artwork, coverOf, Exhibition, Profile } from "../lib/api";
 import { useLang } from "../lib/i18n";
 import { ArtworkCard } from "../components/ArtworkCard";
 
+// 홈 아래 칸 작품 수: PC 3열·태블릿 2열 모두 줄이 딱 맞는다
+const HOME_WORKS = 6;
+
 const period = (e: Exhibition, tbd: string) => [e.start_date, e.end_date].filter(Boolean).join(" — ").replaceAll("-", ".") || tbd;
 
 export function Home() {
   const { t, to, work: localizeWork, profile: localizeProfile, exhibition: localizeExhibition } = useLang();
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
   const featured = useQuery({ queryKey: ["featured"], queryFn: () => api<{ items: Artwork[] }>("/artworks?featured=true&size=6") });
-  const latest = useQuery({ queryKey: ["latest"], queryFn: () => api<{ items: Artwork[] }>("/artworks?size=6") });
+  const latest = useQuery({ queryKey: ["latest"], queryFn: () => api<{ items: Artwork[] }>("/artworks?size=12") });
   const exhibitions = useQuery({ queryKey: ["exhibitions"], queryFn: () => api<Exhibition[]>("/exhibitions") });
 
-  // 대표 작품이 없으면 최신 작품을 대신 보여준다
-  const works = featured.data?.items.length ? featured.data.items : latest.data?.items ?? [];
+  // 첫 화면 큰 사진은 사진 있는 첫 대표 작품(없으면 최신 작품). 아래 칸은 나머지 대표 작품을 먼저, 모자라면 최신 작품으로 6점까지 채운다
+  const picked = featured.data?.items ?? [];
+  const recent = latest.data?.items ?? [];
+  const works = picked.length ? picked : recent;
   const heroWork = works.find(w => coverOf(w));
   const hero = heroWork ? coverOf(heroWork) : null;
   const heroTitle = heroWork ? localizeWork(heroWork).title : "";
-  const rest = works.filter(w => w !== heroWork);
+  const seen = new Set(heroWork ? [heroWork.id] : []);
+  const rest = [...picked, ...recent].filter(w => !seen.has(w.id) && seen.add(w.id)).slice(0, HOME_WORKS);
+  const allPicked = rest.every(w => w.featured);
   const current = exhibitions.data?.[0];
   const ex = current ? localizeExhibition(current) : null;
   const p = profile.data ? localizeProfile(profile.data) : null;
@@ -41,7 +48,7 @@ export function Home() {
 
     {rest.length > 0 && (
       <section className="container section">
-        <div className="section-head"><h2>{featured.data?.items.length ? t.featured : t.recent}</h2><Link className="link-arrow" to={to("/works")}>{t.viewAll} <span aria-hidden="true">→</span></Link></div>
+        <div className="section-head"><h2>{allPicked ? t.featured : picked.length ? t.works : t.recent}</h2><Link className="link-arrow" to={to("/works")}>{t.viewAll} <span aria-hidden="true">→</span></Link></div>
         <div className="works-grid">{rest.map(work => <ArtworkCard key={work.id} work={work} />)}</div>
       </section>
     )}
