@@ -650,6 +650,13 @@ npx wrangler deploy "${ENV_ARGS[@]}"
 
 운영 데이터가 생긴 뒤에 이전해야 한다면 다음 순서로 한다. 이번 범위가 아니며 방법만 적어 둔다.
 
+> **실행 기록 (2026-11-06)**: 아래 순서대로 Docker 운영 데이터를 `Stxtory@gmail.com` 계정의 `artist-seo` Worker(D1 `artist-portfolio`, R2 `artist-originals`·`artist-public`)로 옮겼다.
+> - 이전 전 백업: `backups/db-20261106-211612-pre-cloudflare.sql.gz`
+> - DB: `python3 apps/edge/scripts/export-postgres-to-d1.py out.sql`로 SQL을 만들고(메모리 SQLite에서 스키마·외래키 검사), `wrangler d1 migrations apply` 후 `wrangler d1 execute --remote --file out.sql`. 관리자 1, 프로필 1, 시리즈 3, 작품 20, 미디어 33, 작업 33, 문의 1행. 세션·로그인 기록·업로드 세션은 옮기지 않았다.
+> - 파일: rclone 대신 `wrangler r2 object put --content-type`으로 105개(원본 33개 118MB, 공개 72개 129MB)를 같은 키로 올렸다.
+> - 검증: 원본 33개를 내려받아 `sha256` 전부 일치. 공개 API(작품·시리즈·프로필)가 기존 사이트와 같고, 공개 미디어 24개가 Range 요청에 206으로 응답.
+> - wrangler에 계정이 여럿 로그인되어 있으면 `CLOUDFLARE_ACCOUNT_ID=7b3dcb1ab75d22c7ef4254754ac4a68e`를 지정한다.
+
 1. **DB**: PostgreSQL에서 테이블별로 읽어 값을 변환한 `INSERT` SQL을 만든다(`wrangler d1 execute --file`). 변환: `boolean → 0/1`, 시각 → UTC ISO8601 문자열, enum → 문자열 그대로, `date → YYYY-MM-DD`. `media_assets.backend`는 `local` → `r2`로 바꾼다. `media_jobs`의 lease 컬럼은 버린다. `upload_sessions`는 진행 중인 것이 없을 때만 이전하거나 버린다.
 2. **파일**: 볼륨의 `originals`를 `artist-originals`로, `public`을 `artist-public`로 키를 그대로 `rclone`(R2의 S3 호환 주소)으로 복사한다. 이미지 파생본 키 규칙(`{media_id}/{폭}.webp|jpg`)이 같아 DB의 `public_key`를 바꿀 필요가 없다.
 3. **기존 영상**: 이미 변환된 `playback.mp4`와 `poster.jpg`는 공개 버킷에 같은 키로 복사하면 된다. 이 경우 원본은 비공개 버킷에 있으므로 `backend='r2'`, `public_key`는 공개 버킷의 `playback.mp4`를 가리키는 현재 상태 그대로다.
