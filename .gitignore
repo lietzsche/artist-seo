@@ -8,3 +8,6 @@ test-results/
 # Cloudflare Worker (apps/edge): 개발용 비밀 값과 로컬 D1/R2
 .dev.vars
 .wrangler/
+
+# 예전 Docker 운영 때 만든 DB 백업 (개인정보 포함, 올리지 않음)
+backups/
