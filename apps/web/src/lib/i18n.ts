@@ -6,7 +6,7 @@ export type Lang = "en" | "ko";
 
 const en = {
   works: "Works", about: "About", contact: "Contact", admin: "Admin", skip: "Skip to content", mainMenu: "Main menu", footerMenu: "Footer menu",
-  fallbackName: "Artist Portfolio", siteTitle: "Works and Exhibitions", viewWorks: "View works", viewAll: "View all",
+  fallbackName: "Artist Portfolio", siteTitle: "Works and Exhibitions", viewWorks: "View works", enterSite: "Enter the site", viewAll: "View all",
   featured: "Selected Works", recent: "Recent Works", noWorks: "No works have been published yet.", exhibition: "Exhibition", tbd: "Dates to be announced",
   count: (n: number) => `${n} ${n === 1 ? "work" : "works"}`,
   loadingWorks: "Loading works…", loadFailed: "Could not load the list.",
@@ -33,7 +33,7 @@ type Dict = typeof en;
 
 const ko: Dict = {
   works: "작품", about: "소개", contact: "문의", admin: "관리", skip: "본문으로 건너뛰기", mainMenu: "주요 메뉴", footerMenu: "하단 메뉴",
-  fallbackName: "작가 포트폴리오", siteTitle: "작업과 전시", viewWorks: "작품 보기", viewAll: "전체 보기",
+  fallbackName: "작가 포트폴리오", siteTitle: "작업과 전시", viewWorks: "작품 보기", enterSite: "사이트 들어가기", viewAll: "전체 보기",
   featured: "선정 작품", recent: "최근 작품", noWorks: "아직 공개된 작품이 없습니다.", exhibition: "Exhibition", tbd: "일정 미정",
   count: (n: number) => `${n}점`,
   loadingWorks: "작품을 불러오는 중입니다.", loadFailed: "목록을 불러오지 못했습니다.",

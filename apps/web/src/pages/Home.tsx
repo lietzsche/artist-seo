@@ -4,6 +4,7 @@ import { api, Artwork, coverOf, Exhibition, Profile } from "../lib/api";
 import { useLang } from "../lib/i18n";
 import { usePageTitle } from "../lib/title";
 import { ArtworkCard } from "../components/ArtworkCard";
+import { EntryGate } from "../components/EntryGate";
 
 // 홈 아래 칸 작품 수: PC 3열·태블릿 2열 모두 줄이 딱 맞는다
 const HOME_WORKS = 6;
@@ -33,6 +34,7 @@ export function Home() {
   const p = profile.data ? localizeProfile(profile.data) : null;
 
   return <>
+    <EntryGate />
     <section className={`container home-hero${hero ? "" : " text-only"}`}>
       <div className="hero-copy">
         {p?.location && <p className="eyebrow">{p.location}</p>}
