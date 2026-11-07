@@ -70,16 +70,22 @@ export function Home() {
 
     {rest.length > 0 && (
       <section className="container section">
-        <div className="section-head"><h2>{tops.length ? t.works : allPicked ? t.featured : picked.length ? t.works : t.recent}</h2><Link className="link-arrow" to={to("/works")}>{t.viewAll} <span aria-hidden="true">→</span></Link></div>
-        {tops.length > 0 && <div className="cat-nav">
-          <div className="cat-tabs" role="group" aria-label={t.categories}>
-            <button type="button" aria-pressed={!top} onClick={() => pickTop(null)}>{t.allCategories}</button>
-            {tops.map(c => <button key={c.id} type="button" aria-pressed={top?.id === c.id} onClick={() => pickTop(c.id)}>{categoryName(c)}</button>)}
-          </div>
-          {subs.length > 0 && <div className="cat-subs" role="group" aria-label={t.subcategories}>
-            <button type="button" aria-pressed={!subId} onClick={() => setSubId(null)}>{t.allCategories}</button>
-            {subs.map(c => <button key={c.id} type="button" aria-pressed={subId === c.id} onClick={() => setSubId(c.id)}>{categoryName(c)}</button>)}
-          </div>}
+        {/* 카테고리 탭이 있으면 칸 제목(WORKS) 자리에 탭을 둔다. 제목은 화면 읽기용으로만 남긴다 */}
+        <div className={`section-head${tops.length ? " has-tabs" : ""}`}>
+          {tops.length > 0
+            ? <>
+                <h2 className="sr-only">{t.works}</h2>
+                <div className="cat-tabs" role="group" aria-label={t.categories}>
+                  <button type="button" aria-pressed={!top} onClick={() => pickTop(null)}>{t.allCategories}</button>
+                  {tops.map(c => <button key={c.id} type="button" aria-pressed={top?.id === c.id} onClick={() => pickTop(c.id)}>{categoryName(c)}</button>)}
+                </div>
+              </>
+            : <h2>{allPicked ? t.featured : picked.length ? t.works : t.recent}</h2>}
+          <Link className="link-arrow" to={to("/works")}>{t.viewAll} <span aria-hidden="true">→</span></Link>
+        </div>
+        {subs.length > 0 && <div className="cat-subs" role="group" aria-label={t.subcategories}>
+          <button type="button" aria-pressed={!subId} onClick={() => setSubId(null)}>{t.allCategories}</button>
+          {subs.map(c => <button key={c.id} type="button" aria-pressed={subId === c.id} onClick={() => setSubId(c.id)}>{categoryName(c)}</button>)}
         </div>}
         {selected
           ? <div className={`works-grid${inCategory.isPlaceholderData || inCategory.isPending ? " is-loading" : ""}`} aria-busy={inCategory.isPlaceholderData || inCategory.isPending}>

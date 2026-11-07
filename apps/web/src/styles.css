@@ -115,19 +115,23 @@ figcaption cite { font-family: var(--serif); font-style: italic; font-size: 1.05
 .section { padding-block: clamp(4rem, 10vh, 7rem); }
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: clamp(2rem, 5vh, 3.5rem); padding-top: 1.2rem; border-top: 1px solid var(--line); }
 .section-head h2 { margin: 0; font-size: .74rem; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
-/* 홈 카테고리 탭: 윗줄 최상위(밑줄), 아랫줄 하위(작은 테두리). 휴대폰은 줄마다 옆으로 밀어서 본다 */
-.cat-nav { display: grid; gap: .9rem; margin: calc(clamp(2rem, 5vh, 3.5rem) * -.45) 0 clamp(1.8rem, 4vh, 2.8rem); }
-.cat-tabs, .cat-subs { display: flex; gap: .3rem 1.6rem; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); }
+/* 홈 카테고리 탭: 칸 제목 자리에 윗줄 최상위(밑줄), 그 아래 하위(작은 테두리). 휴대폰은 줄마다 옆으로 밀어서 본다 */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.section-head.has-tabs { align-items: center; padding-top: .6rem; margin-bottom: clamp(1.8rem, 4vh, 2.8rem); }
+.section-head.has-tabs:has(+ .cat-subs) { margin-bottom: .9rem; }
+.section-head.has-tabs .link-arrow { flex: none; }
+.cat-tabs, .cat-subs { display: flex; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.cat-tabs { flex: 1; min-width: 0; gap: 1.6rem; }
+.cat-subs { gap: .4rem; margin: 0 calc(var(--gutter) * -1) clamp(1.8rem, 4vh, 2.8rem); padding-inline: var(--gutter); }
 .cat-tabs::-webkit-scrollbar, .cat-subs::-webkit-scrollbar { display: none; }
-.cat-nav button { flex: none; background: none; border: 0; cursor: pointer; white-space: nowrap; color: var(--muted); transition: color .2s, border-color .2s; }
+.cat-tabs button, .cat-subs button { flex: none; background: none; border: 0; cursor: pointer; white-space: nowrap; color: var(--muted); transition: color .2s, border-color .2s; }
 .cat-tabs button { position: relative; padding: .35rem 0; font-family: var(--serif); font-size: 1.2rem; }
 .cat-tabs button::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .3s var(--ease); }
 .cat-tabs button[aria-pressed="true"] { color: var(--ink); }
 .cat-tabs button[aria-pressed="true"]::after { transform: scaleX(1); }
-.cat-subs { gap: .4rem; }
 .cat-subs button { padding: .3rem .85rem; font-size: .82rem; border: 1px solid var(--line); border-radius: 99px; }
 .cat-subs button[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
-.cat-nav button:hover { color: var(--ink); }
+.cat-tabs button:hover, .cat-subs button:hover { color: var(--ink); }
 
 .exhibition-band { background: var(--wall); border-block: 1px solid var(--line); }
 .exhibition-band .container { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 2rem 4rem; padding-block: clamp(4rem, 12vh, 8rem); }
