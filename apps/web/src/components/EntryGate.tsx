@@ -10,7 +10,7 @@ const OPEN_MS = 1100;
 const landedOnHome = /^\/(ko\/?)?$/.test(window.location.pathname);
 let dismissed = false;
 
-/** 첫 화면: 배경 판화를 크게 보여 주고, 누르면 양쪽 문처럼 열리며 홈이 드러난다 (홈 주소를 열 때마다) */
+/** 첫 화면: 입장 그림(public/theme/entry.jpg)을 크게 보여 주고, 누르면 양쪽 문처럼 열리며 홈이 드러난다 (홈 주소를 열 때마다) */
 export function EntryGate() {
   const { t, profile: localize } = useLang();
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
