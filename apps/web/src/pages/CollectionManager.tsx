@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, Exhibition, Series } from "../lib/api";
+import { api, Category, Exhibition, Series } from "../lib/api";
 
 type Status = { kind: "ok" | "bad"; text: string } | null;
 const message = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
@@ -11,6 +11,10 @@ const seriesBody = (form: FormData) => ({
   name: text(form, "name"), description: text(form, "description"),
   name_en: text(form, "name_en"), description_en: text(form, "description_en"),
   sort_order: Number(form.get("sort_order")) || 0,
+});
+const categoryBody = (form: FormData) => ({
+  name: text(form, "name"), name_en: text(form, "name_en"), parent_id: text(form, "parent_id") || null,
+  sort_order: Number(form.get("sort_order")) || 0, is_visible: form.get("is_visible") === "on",
 });
 const exhibitionBody = (form: FormData) => ({
   slug: text(form, "slug"), title: text(form, "title"), venue: text(form, "venue"), location: text(form, "location"),
@@ -26,6 +30,20 @@ function SeriesFields({ item }: { item?: Series }) {
     <label className="c2">정렬 순서<input name="sort_order" type="number" min="0" defaultValue={item?.sort_order ?? 0} /></label>
     <label className="c4">영어 이름<input name="name_en" maxLength={200} defaultValue={item?.name_en} placeholder="비우면 한국어 이름 표시" /></label>
     <label className="c8">영어 설명<input name="description_en" maxLength={5000} defaultValue={item?.description_en} /></label>
+  </>;
+}
+
+/** 유형: 최상위이거나, 최상위 하나의 아래(하위). 하위 아래에는 둘 수 없어 최상위만 고를 수 있다 */
+function CategoryFields({ item, tops }: { item?: Category; tops: Category[] }) {
+  return <>
+    <label className="c4">이름<input name="name" required maxLength={100} defaultValue={item?.name} placeholder="예: 설치" /></label>
+    <label className="c4">영어 이름<input name="name_en" maxLength={100} defaultValue={item?.name_en} placeholder="비우면 한국어 이름 표시" /></label>
+    <label className="c4">유형<select name="parent_id" defaultValue={item?.parent_id ?? ""}>
+      <option value="">최상위 카테고리</option>
+      {tops.filter(top => top.id !== item?.id).map(top => <option key={top.id} value={top.id}>{top.name} 아래 (하위)</option>)}
+    </select></label>
+    <label className="c2">순서<input name="sort_order" type="number" min="0" defaultValue={item?.sort_order ?? 0} /></label>
+    <div className="checks"><label className="check"><input name="is_visible" type="checkbox" defaultChecked={item?.is_visible ?? true} /> 홈에 표시 (끄면 숨김. 최상위를 숨기면 하위도 숨습니다)</label></div>
   </>;
 }
 
@@ -53,6 +71,9 @@ function ExhibitionFields({ item }: { item?: Exhibition }) {
 export function CollectionManager({ csrf }: { csrf: string }) {
   const client = useQueryClient();
   const series = useQuery({ queryKey: ["admin-series"], queryFn: () => api<Series[]>("/series/admin/all") });
+  const categories = useQuery({ queryKey: ["admin-categories"], queryFn: () => api<Category[]>("/categories/admin/all") });
+  const tops = (categories.data ?? []).filter(c => !c.parent_id);
+  const [categoryStatus, setCategoryStatus] = useState<Status>(null);
   const exhibitions = useQuery({ queryKey: ["admin-exhibitions"], queryFn: () => api<Exhibition[]>("/exhibitions/admin/all") });
   const [seriesStatus, setSeriesStatus] = useState<Status>(null);
   const [exhibitionStatus, setExhibitionStatus] = useState<Status>(null);
@@ -62,6 +83,10 @@ export function CollectionManager({ csrf }: { csrf: string }) {
   // 시리즈 이름은 작품 목록·편집기에도 쓰이므로 관련 목록을 함께 새로 불러온다
   const refreshSeries = async () => {
     for (const key of ["admin-series", "series", "admin-works", "works"]) await client.invalidateQueries({ queryKey: [key] });
+  };
+  // 카테고리는 작품 편집기의 선택 목록과 홈 탭에도 쓰인다
+  const refreshCategories = async () => {
+    for (const key of ["admin-categories", "categories", "admin-works", "works", "home-category"]) await client.invalidateQueries({ queryKey: [key] });
   };
   const refreshExhibitions = async () => {
     for (const key of ["admin-exhibitions", "exhibitions"]) await client.invalidateQueries({ queryKey: [key] });
@@ -77,6 +102,16 @@ export function CollectionManager({ csrf }: { csrf: string }) {
     } catch (e) { setSeriesStatus({ kind: "bad", text: message(e, "추가하지 못했습니다.") }); }
   }
 
+  async function createCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formEl = event.currentTarget;
+    try {
+      await api("/categories/admin", { method: "POST", headers, body: JSON.stringify(categoryBody(new FormData(formEl))) });
+      formEl.reset(); setCategoryStatus({ kind: "ok", text: "카테고리를 추가했습니다." });
+      await refreshCategories();
+    } catch (e) { setCategoryStatus({ kind: "bad", text: message(e, "추가하지 못했습니다.") }); }
+  }
+
   async function createExhibition(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formEl = event.currentTarget;
@@ -88,6 +123,25 @@ export function CollectionManager({ csrf }: { csrf: string }) {
   }
 
   return <>
+    <section className="panel">
+      <h2>카테고리</h2>
+      <p className="hint">홈의 작품 칸 위에 탭으로 나타납니다. 최상위 카테고리 아래에 하위 카테고리를 한 단계 더 둘 수 있습니다. 작품 편집에서 카테고리를 하나 고르면, 하위에 넣은 작품은 그 위 최상위 탭에도 나옵니다. 공개 작품이 없는 카테고리는 홈에 보이지 않습니다.</p>
+      <form className="admin-form" onSubmit={createCategory}>
+        <CategoryFields tops={tops} />
+        <div className="actions"><button className="btn btn-ghost">카테고리 추가</button>{categoryStatus && <span className={`badge ${categoryStatus.kind === "ok" ? "on" : "bad"}`} role="status">{categoryStatus.text}</span>}</div>
+      </form>
+      <ul className="edit-list">
+        {categories.data?.map(item => <EditRow key={item.id} open={openId === item.id} onToggle={() => setOpenId(openId === item.id ? null : item.id)}
+          title={<span className={item.parent_id ? "sub-row" : undefined}>{item.parent_id && <span className="muted" aria-hidden="true">└ </span>}{item.name}{item.name_en && <span className="muted"> · {item.name_en}</span>}</span>}
+          meta={<>{!item.is_visible && <span className="badge">숨김</span>} {item.parent_id ? "하위" : "최상위"} · 작품 {item.work_count} · 순서 {item.sort_order}</>}
+          confirmText={`카테고리 '${item.name}'을(를) 삭제할까요? 이 카테고리의 작품은 '카테고리 없음'이 됩니다.`}
+          onSave={form => api(`/categories/admin/${item.id}`, { method: "PUT", headers, body: JSON.stringify(categoryBody(form)) }).then(refreshCategories)}
+          onDelete={() => api(`/categories/admin/${item.id}`, { method: "DELETE", headers }).then(async () => { setOpenId(null); await refreshCategories(); })}
+          deleteHint="하위 카테고리가 있는 최상위는 하위를 먼저 옮기거나 삭제해야 합니다.">
+          <CategoryFields item={item} tops={tops} />
+        </EditRow>)}
+      </ul>
+    </section>
     <section className="panel">
       <h2>시리즈</h2>
       <p className="hint">작품을 묶는 연작입니다. 작품 편집에서 시리즈를 고르면 작품 목록에서 시리즈별로 볼 수 있습니다.</p>

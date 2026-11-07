@@ -239,6 +239,51 @@ describe("관리", () => {
     expect(await json(await client.get("/api/v1/exhibitions/admin/all"))).toEqual([]);
   });
 
+  it("2단계 카테고리: 만들기, 규칙, 하위 포함 거르기, 숨김, 삭제", async () => {
+    const client = new Client();
+    await client.setup();
+    const add = (body: Record<string, unknown>) => client.send("POST", "/api/v1/categories/admin", body);
+    const install = await json(await add({ name: "설치", name_en: "Installation", sort_order: 1 }));
+    const video = await json(await add({ name: "영상", sort_order: 2 }));
+    const big = await json(await add({ name: "대형", parent_id: install.id }));
+    expect(big.parent_id).toBe(install.id);
+    // 같은 위치 같은 이름은 막고, 다른 위치면 허용한다
+    expect((await add({ name: "설치" })).status).toBe(409);
+    expect((await add({ name: "대형", parent_id: install.id })).status).toBe(409);
+    expect((await add({ name: "대형", parent_id: video.id })).status).toBe(201);
+    // 2단계까지만: 하위 아래 하위, 하위가 있는 최상위를 옮기기, 자기 자신 아래는 막는다
+    expect((await add({ name: "더 작은", parent_id: big.id })).status).toBe(422);
+    expect((await client.send("PUT", `/api/v1/categories/admin/${install.id}`, { name: "설치", parent_id: video.id })).status).toBe(422);
+    expect((await client.send("PUT", `/api/v1/categories/admin/${big.id}`, { name: "대형", parent_id: big.id })).status).toBe(422);
+    expect((await add({ name: "없는 상위", parent_id: "missing" })).status).toBe(422);
+
+    // 작품이 없으면 공개 목록에 나오지 않는다
+    expect(await json(await client.get("/api/v1/categories"))).toEqual([]);
+    await createArtwork(client, { slug: "in-big", is_published: true, category_id: big.id, featured: true });
+    await createArtwork(client, { slug: "in-install", is_published: true, category_id: install.id });
+    await createArtwork(client, { slug: "hidden-work", is_published: false, category_id: video.id });
+    const shown = await json(await client.get("/api/v1/categories"));
+    expect(shown.map((c: { name: string; work_count: number }) => [c.name, c.work_count])).toEqual([["설치", 2], ["대형", 1]]);
+    expect((await json(await client.get(`/api/v1/artworks?category=${install.id}`))).total).toBe(2);
+    expect((await json(await client.get(`/api/v1/artworks?category=${big.id}`))).total).toBe(1);
+    expect((await json(await client.get(`/api/v1/artworks?category=${install.id}&sort=featured`))).items[0].slug).toBe("in-big");
+    const work = await json(await client.get("/api/v1/artworks/in-big"));
+    expect(work.category_id).toBe(big.id);
+
+    // 최상위를 숨기면 하위도 숨는다
+    await client.send("PUT", `/api/v1/categories/admin/${install.id}`, { name: "설치", sort_order: 1, is_visible: false });
+    expect(await json(await client.get("/api/v1/categories"))).toEqual([]);
+    const admin = await json(await client.get("/api/v1/categories/admin/all"));
+    expect(admin.map((c: { name: string }) => c.name)).toEqual(["설치", "대형", "영상", "대형"]);
+
+    // 하위가 있는 최상위는 지울 수 없고, 지운 카테고리의 작품은 '없음'이 된다
+    expect((await client.send("DELETE", `/api/v1/categories/admin/${install.id}`)).status).toBe(409);
+    expect((await client.send("DELETE", `/api/v1/categories/admin/${big.id}`)).status).toBe(204);
+    expect((await json(await client.get("/api/v1/artworks/in-big"))).category_id).toBeNull();
+    expect((await client.send("DELETE", `/api/v1/categories/admin/${install.id}`)).status).toBe(204);
+    expect((await client.send("POST", "/api/v1/categories/admin", { name: "x" }, false)).status).toBe(403);
+  });
+
   it("휴지통 작품은 관리 목록에서도 빠진다", async () => {
     const client = new Client();
     await client.setup();

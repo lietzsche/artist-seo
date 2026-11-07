@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, Artwork, coverOf, mediaUrl, Media, SALE_LABEL, Series } from "../lib/api";
+import { api, Artwork, Category, categoryPath, coverOf, mediaUrl, Media, SALE_LABEL, Series } from "../lib/api";
 import { MediaUpload } from "./MediaUpload";
 
 type Props = { csrf: string };
@@ -23,11 +23,12 @@ export function ArtworkManager({ csrf }: Props) {
     refetchInterval: query => (query.state.data?.some(w => w.media.some(m => m.status === "pending" || m.status === "processing")) ? 3000 : false),
   });
   const series = useQuery({ queryKey: ["admin-series"], queryFn: () => api<Series[]>("/series/admin/all") });
+  const categories = useQuery({ queryKey: ["admin-categories"], queryFn: () => api<Category[]>("/categories/admin/all") });
 
   const refresh = async () => {
     await client.invalidateQueries({ queryKey: ["admin-works"] });
     await client.invalidateQueries({ queryKey: ["admin-overview"] });
-    for (const key of ["works", "featured", "latest", "work"]) await client.invalidateQueries({ queryKey: [key] });
+    for (const key of ["works", "featured", "latest", "work", "admin-categories", "categories", "home-category"]) await client.invalidateQueries({ queryKey: [key] });
   };
 
   async function create(event: FormEvent<HTMLFormElement>) {
@@ -38,7 +39,7 @@ export function ArtworkManager({ csrf }: Props) {
     const title = String(form.get("title") || "").trim();
     const slug = String(form.get("slug") || "").trim() || autoSlug(title);
     try {
-      const work = await api<Artwork>("/artworks/admin", { method: "POST", headers: json(csrf), body: JSON.stringify({ slug, title, year: Number(form.get("year")) || null, medium: form.get("medium") || "", dimensions: "", description: "", price_text: null, show_price: false, sale_status: "unavailable", is_published: false, featured: false, series_id: null }) });
+      const work = await api<Artwork>("/artworks/admin", { method: "POST", headers: json(csrf), body: JSON.stringify({ slug, title, year: Number(form.get("year")) || null, medium: form.get("medium") || "", dimensions: "", description: "", price_text: null, show_price: false, sale_status: "unavailable", is_published: false, featured: false, series_id: null, category_id: null }) });
       formEl.reset();
       await refresh();
       setOpenId(work.id); // 만든 작품의 편집기를 바로 연다
@@ -82,7 +83,7 @@ export function ArtworkManager({ csrf }: Props) {
               </div>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" aria-expanded={open} onClick={() => setOpenId(open ? null : work.id)}>{open ? "닫기" : "편집"}</button>
-            {open && <ArtworkEditor work={work} series={series.data ?? []} csrf={csrf} onChanged={refresh} onClose={() => setOpenId(null)} />}
+            {open && <ArtworkEditor work={work} series={series.data ?? []} categories={categories.data ?? []} csrf={csrf} onChanged={refresh} onClose={() => setOpenId(null)} />}
           </li>;
         })}
       </ul>
@@ -90,7 +91,7 @@ export function ArtworkManager({ csrf }: Props) {
   </>;
 }
 
-function ArtworkEditor({ work, series, csrf, onChanged, onClose }: { work: Artwork; series: Series[]; csrf: string; onChanged: () => Promise<void>; onClose: () => void }) {
+function ArtworkEditor({ work, series, categories, csrf, onChanged, onClose }: { work: Artwork; series: Series[]; categories: Category[]; csrf: string; onChanged: () => Promise<void>; onClose: () => void }) {
   const [status, setStatus] = useState<{ kind: "ok" | "bad"; text: string } | null>(null);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -101,7 +102,7 @@ function ArtworkEditor({ work, series, csrf, onChanged, onClose }: { work: Artwo
       medium: form.get("medium"), dimensions: form.get("dimensions"), description: form.get("description"),
       price_text: String(form.get("price_text") || "").trim() || null, show_price: form.get("show_price") === "on",
       sale_status: form.get("sale_status"), is_published: form.get("is_published") === "on",
-      featured: form.get("featured") === "on", series_id: form.get("series_id") || null,
+      featured: form.get("featured") === "on", series_id: form.get("series_id") || null, category_id: form.get("category_id") || null,
       title_en: String(form.get("title_en") || "").trim(), medium_en: String(form.get("medium_en") || "").trim(),
       description_en: String(form.get("description_en") || ""), price_text_en: String(form.get("price_text_en") || "").trim() || null,
     };
@@ -151,6 +152,7 @@ function ArtworkEditor({ work, series, csrf, onChanged, onClose }: { work: Artwo
       <label className="c12">작품 설명<textarea name="description" rows={4} maxLength={10000} defaultValue={work.description} /></label>
       <label className="c3">판매 상태<select name="sale_status" defaultValue={work.sale_status}><option value="available">판매 가능</option><option value="sold">판매 완료</option><option value="unavailable">비매품</option></select></label>
       <label className="c3">가격<input name="price_text" maxLength={100} defaultValue={work.price_text ?? ""} placeholder="예: 3,000,000원" /></label>
+      <label className="c6">카테고리<select name="category_id" defaultValue={work.category_id ?? ""}><option value="">없음</option>{categories.map(c => <option key={c.id} value={c.id}>{categoryPath(c, categories)}</option>)}</select></label>
       <fieldset className="lang-fields c12">
         <legend>영어 페이지 <span>기본 사이트는 영어입니다. 비워 두면 영어 페이지에도 한국어 내용이 나옵니다.</span></legend>
         <label className="c6">영어 제목<input name="title_en" maxLength={300} defaultValue={work.title_en} placeholder="e.g. Morning Light" /></label>

@@ -16,7 +16,7 @@ export function mediaOut(row: Row) {
 
 export function artworkOut(row: Row, media: Row[] = []) {
   return {
-    id: row.id, series_id: row.series_id ?? null, slug: row.slug, title: row.title, year: row.year ?? null, medium: row.medium, dimensions: row.dimensions,
+    id: row.id, series_id: row.series_id ?? null, category_id: row.category_id ?? null, slug: row.slug, title: row.title, year: row.year ?? null, medium: row.medium, dimensions: row.dimensions,
     description: row.description, price_text: row.price_text ?? null, title_en: row.title_en, medium_en: row.medium_en, description_en: row.description_en,
     price_text_en: row.price_text_en ?? null, show_price: bool(row.show_price), sale_status: row.sale_status, is_published: bool(row.is_published),
     featured: bool(row.featured), created_at: row.created_at, updated_at: row.updated_at, media: media.map(mediaOut),
@@ -38,6 +38,10 @@ export async function withMedia(db: D1Database, artworks: Row[]) {
 
 export function seriesOut(row: Row) {
   return { id: row.id, name: row.name, description: row.description, name_en: row.name_en, description_en: row.description_en, sort_order: row.sort_order };
+}
+
+export function categoryOut(row: Row) {
+  return { id: row.id, parent_id: row.parent_id ?? null, name: row.name, name_en: row.name_en, sort_order: row.sort_order, is_visible: bool(row.is_visible) };
 }
 
 export function exhibitionOut(row: Row) {

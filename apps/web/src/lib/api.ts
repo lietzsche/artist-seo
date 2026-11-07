@@ -2,7 +2,11 @@ export const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 export const MEDIA_BASE = import.meta.env.VITE_MEDIA_BASE_URL || "/media";
 
 export type Media = { id: string; public_key: string | null; poster_key: string | null; media_type: string; content_type: string; width: number | null; height: number | null; source_is_hdr: boolean; hdr_to_sdr: boolean; status: string; is_primary: boolean };
-export type Artwork = { id: string; series_id: string | null; slug: string; title: string; year: number | null; medium: string; dimensions: string; description: string; price_text: string | null; title_en: string; medium_en: string; description_en: string; price_text_en: string | null; show_price: boolean; sale_status: "available" | "sold" | "unavailable"; is_published: boolean; featured: boolean; created_at: string; updated_at: string; media: Media[] };
+export type Artwork = { id: string; series_id: string | null; category_id: string | null; slug: string; title: string; year: number | null; medium: string; dimensions: string; description: string; price_text: string | null; title_en: string; medium_en: string; description_en: string; price_text_en: string | null; show_price: boolean; sale_status: "available" | "sold" | "unavailable"; is_published: boolean; featured: boolean; created_at: string; updated_at: string; media: Media[] };
+/** 2단계 카테고리. parent_id가 비어 있으면 최상위. work_count는 공개 목록이면 공개 작품 수(하위 포함), 관리 목록이면 직접 지정된 작품 수 */
+export type Category = { id: string; parent_id: string | null; name: string; name_en: string; sort_order: number; is_visible: boolean; work_count: number };
+/** 관리 화면용 표시 이름: '설치 › 대형' */
+export const categoryPath = (c: Category, all: Category[]) => (c.parent_id ? `${all.find(p => p.id === c.parent_id)?.name ?? "?"} › ${c.name}` : c.name);
 export type Series = { id:string; name:string; description:string; name_en:string; description_en:string; sort_order:number };
 export type Exhibition = { id:string; slug:string; title:string; venue:string; location:string; start_date:string|null; end_date:string|null; description:string; title_en:string; venue_en:string; location_en:string; description_en:string; is_published:boolean; sort_order:number };
 

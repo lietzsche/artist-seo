@@ -10,7 +10,7 @@ import { InquiryManager, inquiriesQuery } from "./InquiryManager";
 type Me = { email: string; csrf_token: string };
 type Overview = { storage: { stored_bytes: number; reserved_bytes: number; max_total_bytes: number; max_file_bytes: number }; new_inquiries: number; failed_jobs: { id: string; media_id: string; kind: string; attempts: number; max_attempts: number; error: string | null }[] };
 const bytes = (value: number) => value >= 1024 ** 3 ? `${(value / 1024 ** 3).toFixed(1)} GiB` : value >= 1024 ** 2 ? `${(value / 1024 ** 2).toFixed(1)} MiB` : `${value} B`;
-const TABS = [["works", "작품"], ["inquiries", "문의"], ["profile", "작가 프로필"], ["collections", "시리즈·전시"], ["status", "서버 현황"]] as const;
+const TABS = [["works", "작품"], ["inquiries", "문의"], ["profile", "작가 프로필"], ["collections", "카테고리·시리즈·전시"], ["status", "서버 현황"]] as const;
 type Tab = typeof TABS[number][0];
 
 export function Admin() {

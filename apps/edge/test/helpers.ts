@@ -40,7 +40,7 @@ const imagesStub = {
 
 export const testEnv = new Proxy(env, { get: (target, key) => (key === "IMAGES" ? imagesStub : Reflect.get(target, key)) });
 
-const TABLES = ["upload_parts", "upload_sessions", "media_jobs", "media_assets", "inquiries", "artworks", "series", "exhibitions", "admin_sessions", "login_attempts", "admins", "artist_profile"];
+const TABLES = ["upload_parts", "upload_sessions", "media_jobs", "media_assets", "inquiries", "artworks", "categories", "series", "exhibitions", "admin_sessions", "login_attempts", "admins", "artist_profile"];
 
 export async function resetAll() {
   await env.DB.batch(TABLES.map(t => env.DB.prepare(`DELETE FROM ${t}`)));
