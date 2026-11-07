@@ -4,13 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { api, Profile } from "../lib/api";
 import { useLang } from "../lib/i18n";
 
-const OPEN_MS = 1100;
+const OPEN_MS = 1300;
 
 // 홈 주소를 열 때마다(새로고침 포함) 보인다. 작품 링크 등 다른 주소로 들어왔거나, 사이트 안에서 홈으로 돌아올 때는 보이지 않는다
 const landedOnHome = /^\/(ko\/?)?$/.test(window.location.pathname);
 let dismissed = false;
 
-/** 첫 화면: 입장 그림(public/theme/entry.jpg)을 크게 보여 주고, 누르면 양쪽 문처럼 열리며 홈이 드러난다 (홈 주소를 열 때마다) */
+/** 첫 화면: 입장 그림(public/theme/entry.jpg)을 크게 보여 주고, 누르면 양쪽 문이 뒤로 밀려 열리며 홈이 드러난다 (홈 주소를 열 때마다) */
 export function EntryGate() {
   const { t, profile: localize } = useLang();
   const profile = useQuery({ queryKey: ["profile"], queryFn: () => api<Profile>("/profile") });
@@ -48,7 +48,6 @@ export function EntryGate() {
       <div className="entry-door right" aria-hidden="true"><div className="entry-art" /></div>
       <button ref={button} type="button" className="entry-enter" onClick={enter} aria-label={t.enterSite}>
         <span key={name} className="entry-name">{name}</span>
-        <span className="entry-cue" aria-hidden="true">Enter</span>
       </button>
     </div>,
     document.body,

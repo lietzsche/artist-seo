@@ -456,33 +456,29 @@ html[data-area="admin"] body::after { display: none; }
     -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 85%); mask-image: linear-gradient(to bottom, #000 30%, transparent 85%); }
 }
 
-/* 입장 화면: 입장 그림을 화면 가득 보여 주고, 누르면 가운데서 갈라져 양쪽 문처럼 열린다 */
-.entry-gate { position: fixed; inset: 0; z-index: 90; overflow: hidden; }
-.entry-door { position: absolute; top: 0; bottom: 0; width: 50%; overflow: hidden; background: var(--bg); transition: transform 1s cubic-bezier(.7, 0, .25, 1) .08s; will-change: transform; }
-.entry-door.left { left: 0; box-shadow: inset -1px 0 0 rgba(227, 218, 203, .08); }
-.entry-door.right { right: 0; }
+/* 입장 화면: 입장 그림을 화면 가득 보여 주고, 누르면 가운데서 갈라진 두 문짝이 바깥쪽 경첩을 축으로 뒤로 밀려 열린다 */
+.entry-gate { position: fixed; inset: 0; z-index: 90; overflow: hidden; perspective: 1600px; }
+.entry-door { position: absolute; top: 0; bottom: 0; width: 50%; overflow: hidden; background: var(--bg); backface-visibility: hidden; will-change: transform;
+  transition: transform 1.2s cubic-bezier(.6, 0, .2, 1), filter 1.2s ease, opacity .5s ease .75s; }
+.entry-door.left { left: 0; transform-origin: left center; box-shadow: inset -1px 0 0 rgba(0, 0, 0, .5); }
+.entry-door.right { right: 0; transform-origin: right center; }
 /* 두 문짝이 한 장의 그림을 반씩 나눠 보여 준다 */
 /* 입장 그림은 임시(더미) 이미지. 바꿀 때는 public/theme/entry.jpg 파일만 교체한다 */
 .entry-art { position: absolute; top: 0; bottom: 0; width: 100vw; background: var(--bg) url("/theme/entry.jpg") center / contain no-repeat; }
 .entry-door.left .entry-art { left: 0; }
 .entry-door.right .entry-art { right: 0; }
 @media (max-aspect-ratio: 3/4) { .entry-art { background-size: cover; } }
-.entry-enter { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: .9rem;
+.entry-enter { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   padding: 0 1rem max(11vh, calc(env(safe-area-inset-bottom) + 3rem)); background: linear-gradient(to top, rgba(11, 10, 8, .92), rgba(11, 10, 8, .55) 22%, transparent 48%);
   border: 0; color: var(--ink); cursor: pointer; transition: opacity .35s; }
 .entry-enter:focus-visible { outline: none; }
-.entry-enter:focus-visible .entry-cue { color: var(--ink); }
 .entry-name { font-family: var(--serif); font-weight: 300; font-size: clamp(2.6rem, 8vw, 5rem); line-height: 1; letter-spacing: .04em; text-shadow: 0 2px 24px rgba(0, 0, 0, .7); animation: entry-in .6s ease both; }
 @keyframes entry-in { from { opacity: 0; } }
-.entry-cue { display: flex; align-items: center; gap: .9rem; font-size: .75rem; letter-spacing: .4em; text-transform: uppercase; color: var(--text-2); animation: entry-pulse 2.4s ease-in-out infinite; }
-.entry-cue::before, .entry-cue::after { content: ""; width: 2.2rem; height: 1px; background: currentColor; opacity: .6; }
-.entry-enter:hover .entry-cue { color: var(--ink); }
-@keyframes entry-pulse { 50% { opacity: .45; } }
 .entry-gate.is-open .entry-enter { opacity: 0; pointer-events: none; }
-.entry-gate.is-open .entry-door.left { transform: translateX(-101%); }
-.entry-gate.is-open .entry-door.right { transform: translateX(101%); }
+.entry-gate.is-open .entry-door { filter: brightness(.35); opacity: 0; }
+.entry-gate.is-open .entry-door.left { transform: rotateY(88deg); }
+.entry-gate.is-open .entry-door.right { transform: rotateY(-88deg); }
 @media (prefers-reduced-motion: reduce) {
-  .entry-cue { animation: none; }
   .entry-door { transition: opacity .35s; }
-  .entry-gate.is-open .entry-door.left, .entry-gate.is-open .entry-door.right { transform: none; opacity: 0; }
+  .entry-gate.is-open .entry-door { transform: none; filter: none; }
 }
