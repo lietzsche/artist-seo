@@ -200,6 +200,14 @@ export function Guide() {
             <dd>그 항목의 영어 칸이 비어 있어서 한국어를 대신 보여주는 것입니다. 작품 편집기나 작가 프로필의 <i>영어 페이지</i> 칸을 채우고 저장하세요.</dd>
             <dt>시리즈를 지울 수 없다고 나와요.</dt>
             <dd>그 시리즈를 쓰는 작품이 있어서입니다. 해당 작품들의 시리즈를 ‘없음’이나 다른 시리즈로 바꾼 뒤 지우세요.</dd>
+            <dt>카테고리를 만들었는데 홈에 탭이 안 보여요.</dt>
+            <dd>홈에는 <b>공개 작품이 하나 이상 들어 있는</b> 카테고리만 나옵니다. 작품 편집기에서 작품의 <i>카테고리</i>를 고르고 <i>사이트에 공개</i>된 상태인지 확인하세요. <i>홈에 표시</i>를 껐거나, 그 위 최상위를 숨겼다면 보이지 않습니다.</dd>
+            <dt>카테고리를 지울 수 없다고 나와요.</dt>
+            <dd>하위 카테고리가 있는 최상위라서입니다. 하위의 <i>유형</i>을 다른 최상위로 바꾸거나 하위를 먼저 지운 뒤 지우세요. 작품이 들어 있는 카테고리는 지울 수 있고, 그 작품들은 <i>카테고리 없음</i>이 됩니다.</dd>
+            <dt>저장할 때 “PUBLIC_ORIGIN이 설정되지 않았습니다”라고 나와요.</dt>
+            <dd>서버에 사이트 주소가 들어 있지 않아 관리 화면의 저장·추가·삭제가 모두 막힌 상태입니다. 운영자가 아래 <i>운영자용 → 사이트 주소(PUBLIC_ORIGIN)</i> 방법으로 넣으면 바로 풀립니다. 다시 배포할 필요는 없습니다.</dd>
+            <dt>저장할 때 “허용되지 않은 Origin입니다”라고 나와요.</dt>
+            <dd>서버에 넣은 사이트 주소와 지금 접속한 주소가 다릅니다(예: <code>…workers.dev</code> 주소로 접속). 실제 사이트 주소로 접속해 관리하거나, 운영자가 사이트 주소 값을 고치세요.</dd>
             <dt>작품을 실수로 휴지통에 넣었어요.</dt>
             <dd>화면에서는 되살릴 수 없지만 서버에는 남아 있습니다. 아래 <i>운영자용</i>을 참고하거나 운영자에게 작품 제목을 알려 주세요.</dd>
             <dt>문의가 와도 알림이 없어요.</dt>
@@ -218,12 +226,14 @@ export function Guide() {
           <p>사이트는 Cloudflare에서 돌아갑니다. 아래 명령은 내 PC의 프로젝트 폴더 안 <code>apps/edge</code>에서 실행하며, 먼저 <code>npx wrangler login</code>으로 Cloudflare에 로그인해 두어야 합니다.</p>
           <table className="guide-table">
             <tbody>
-              <tr><th>코드 반영(배포)</th><td>GitHub에 <code>git push</code>하면 Cloudflare가 자동으로 빌드하고 배포합니다(DB 변경 포함). 진행 상황은 Cloudflare 대시보드의 Worker → <i>Deployments</i>에서 봅니다.</td></tr>
+              <tr><th>코드 반영(배포)</th><td>GitHub에 <code>git push</code>하면 Cloudflare가 자동으로 빌드하고 배포합니다. 진행 상황은 Cloudflare 대시보드의 Worker(<code>artist-seo</code>) → <i>Deployments</i>에서 봅니다.</td></tr>
+              <tr><th>DB 변경 적용</th><td>새 기능에 DB 변경(<code>apps/edge/migrations</code>의 새 파일)이 있으면 배포 때 함께 적용되어야 합니다. 대시보드 Worker → <i>Settings → Builds</i>의 <i>Deploy command</i>가 <code>npm run deploy:ci</code>이면 자동으로 적용됩니다. 기본값(<code>npx wrangler deploy</code>)이면 적용되지 않으니, 그때는 <code>npx wrangler d1 migrations apply artist-portfolio --remote</code>를 직접 실행합니다. 적용됐는지는 <code>npx wrangler d1 migrations list artist-portfolio --remote</code>로 확인합니다(남은 파일이 없으면 끝).</td></tr>
+              <tr><th>사이트 주소(PUBLIC_ORIGIN)</th><td>관리 화면의 저장·추가·삭제는 이 값과 접속 주소가 같을 때만 허용됩니다. 비어 있으면 “PUBLIC_ORIGIN이 설정되지 않았습니다”가 나옵니다. 대시보드 Worker → <i>Settings → Variables and Secrets</i>에서 <code>PUBLIC_ORIGIN</code> = <code>https://sjihun.lietzsche.org</code>(끝에 <code>/</code> 없이)를 넣거나, <code>npx wrangler secret put PUBLIC_ORIGIN --name artist-seo</code>를 실행하고 주소를 입력합니다. 넣는 즉시 적용되고, 이후 배포해도 지워지지 않습니다. 도메인을 바꾸면 이 값도 함께 바꾸세요.</td></tr>
               <tr><th>백업</th><td>DB(D1)는 Cloudflare가 시점 복원(Time Travel)을 자동으로 제공합니다. 되돌릴 때는 <code>npx wrangler d1 time-travel restore artist-portfolio --timestamp=시각</code>을 씁니다. 사진·영상은 R2 버킷(<code>artist-originals</code>, <code>artist-public</code>)에 있습니다.</td></tr>
               <tr><th>비밀번호 재설정</th><td><code>npm run create-admin -- 관리자이메일</code>을 실행하고 새 비밀번호(10자 이상)를 두 번 입력합니다. 기존 로그인은 모두 끊깁니다.</td></tr>
               <tr><th>휴지통 작품 되살리기</th><td><code>{`npx wrangler d1 execute artist-portfolio --remote --command "UPDATE artworks SET deleted_at = NULL WHERE title = '작품 제목';"`}</code>를 실행합니다. 되살린 작품은 비공개 상태이니 관리 화면에서 다시 공개하세요.</td></tr>
               <tr><th>상태·로그 보기</th><td>관리 화면의 <i>서버 현황</i> 탭, Cloudflare 대시보드의 Worker → <i>Observability</i>(서버 기록), 또는 <code>npx wrangler tail</code>(실시간 기록)</td></tr>
-              <tr><th>도메인이 안 열릴 때</th><td>Worker → <i>Settings → Domains &amp; Routes</i>에 도메인이 연결되어 있는지, <i>Variables and Secrets</i>의 <code>PUBLIC_ORIGIN</code>이 실제 주소(<code>https://…</code>)와 같은지 확인합니다. 자세한 내용은 저장소의 <code>docs/cloudflare-deploy-guide.html</code>에 있습니다.</td></tr>
+              <tr><th>도메인이 안 열릴 때</th><td>Worker → <i>Settings → Domains &amp; Routes</i>에 도메인이 연결되어 있는지, <i>Variables and Secrets</i>의 <code>PUBLIC_ORIGIN</code>이 실제 주소(<code>https://…</code>)와 같은지 확인합니다(위 <i>사이트 주소</i> 참고). 자세한 내용은 저장소의 <code>docs/cloudflare-deploy-guide.html</code>에 있습니다.</td></tr>
             </tbody>
           </table>
           <p className="guide-note">대시보드에서 D1 데이터베이스나 R2 버킷을 지우면 <b>작품 정보와 올린 사진·영상이 모두 사라집니다.</b> 운영 중에는 절대 지우지 마세요.</p>

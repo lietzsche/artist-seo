@@ -20,7 +20,7 @@ Cloudflare Worker 하나가 화면, API, 공개 미디어를 모두 서빙합니
 
 ## 배포
 
-`git push`하면 Cloudflare가 자동으로 빌드·배포합니다(마이그레이션 포함, 첫 배포면 D1·R2도 만듦). 배포하려고 소스를 고칠 필요는 없고, 사이트 주소(`PUBLIC_ORIGIN`)와 `APP_SECRET_KEY`는 Cloudflare 대시보드에서 넣습니다. 처음 설정하는 방법은 [Cloudflare 자동 배포 가이드](docs/cloudflare-deploy-guide.html)를 봅니다.
+`git push`하면 Cloudflare가 자동으로 빌드·배포합니다. 대시보드 Builds의 Deploy command가 `npm run deploy:ci`여야 DB 마이그레이션도 함께 적용됩니다(첫 배포면 D1·R2도 만듦). 기본값 `npx wrangler deploy`로 두면 `npx wrangler d1 migrations apply artist-portfolio --remote`를 직접 실행해야 합니다. 배포하려고 소스를 고칠 필요는 없고, 사이트 주소(`PUBLIC_ORIGIN`)와 `APP_SECRET_KEY`는 Cloudflare 대시보드에서 넣습니다. 처음 설정하는 방법은 [Cloudflare 자동 배포 가이드](docs/cloudflare-deploy-guide.html)를 봅니다.
 
 ## 로컬 실행
 
